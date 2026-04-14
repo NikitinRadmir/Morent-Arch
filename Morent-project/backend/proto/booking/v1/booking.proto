@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package booking.v1;
+
+option go_package = "morent-backend/internal/grpc/bookingpb;bookingpb";
+
+import "google/protobuf/timestamp.proto";
+
+service BookingService {
+  rpc CreateBooking(CreateBookingRequest) returns (CreateBookingResponse);
+  rpc GetBookingById(GetBookingByIdRequest) returns (GetBookingByIdResponse);
+  rpc ListCarBookings(ListCarBookingsRequest) returns (ListCarBookingsResponse);
+  rpc CancelBooking(CancelBookingRequest) returns (CancelBookingResponse);
+}
+
+message Booking {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  uint64 car_id = 3;
+  google.protobuf.Timestamp start_date = 4;
+  google.protobuf.Timestamp end_date = 5;
+  double total_price = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message DateRange {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+}
+
+message CreateBookingRequest {
+  uint64 user_id = 1;
+  uint64 car_id = 2;
+  google.protobuf.Timestamp start_date = 3;
+  google.protobuf.Timestamp end_date = 4;
+  double total_price = 5;
+}
+
+message CreateBookingResponse {
+  Booking booking = 1;
+}
+
+message GetBookingByIdRequest {
+  uint64 id = 1;
+}
+
+message GetBookingByIdResponse {
+  Booking booking = 1;
+}
+
+message ListCarBookingsRequest {
+  uint64 car_id = 1;
+}
+
+message ListCarBookingsResponse {
+  repeated DateRange booked = 1;
+}
+
+message CancelBookingRequest {
+  uint64 id = 1;
+  uint64 user_id = 2;
+}
+
+message CancelBookingResponse {
+  bool cancelled = 1;
+}
+

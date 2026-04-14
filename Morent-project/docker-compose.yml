@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgresmaster
+      POSTGRES_DB: car_booking
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: backend/Dockerfile
+  #   depends_on:
+  #     - db
+  #   ports:
+  #     - "1488:1488"
+  #   environment:
+  #     - CONFIG_PATH=/app/config.json
+  #   restart: always
+  #   working_dir: /app
+  #   command: ./backend_server
+
+volumes:
+  postgres_data:

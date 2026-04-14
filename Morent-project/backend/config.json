@@ -1,0 +1,15 @@
+{
+  "db_host": "localhost",
+  "db_port": "5433",
+  "db_user": "postgres",
+  "db_password": "postgresmaster",
+  "db_name": "car_booking",
+  "minio_endpoint": "localhost:9000",
+  "minio_access_key": "minioadmin",
+  "minio_secret_key": "minioadmin",
+  "minio_bucket": "morent-media",
+  "minio_use_ssl": false,
+  "grpc_port": "50051"
+}
+
+
