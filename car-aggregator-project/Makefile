@@ -1,67 +1,31 @@
-.PHONY: build run test test-integration clean docker-build docker-run help
+.PHONY: all docker greetings clean env
 
-# Default target
-help:
-	@echo "Available commands:"
-	@echo "  build            - Build the application"
-	@echo "  run              - Run the application locally"
-	@echo "  test             - Run unit tests"
-	@echo "  test-integration - Run integration tests (requires API keys)"
-	@echo "  test-all         - Run all tests"
-	@echo "  clean            - Clean build artifacts"
-	@echo "  docker-build     - Build Docker image"
-	@echo "  docker-run       - Run application in Docker"
-	@echo "  lint             - Run linter"
+all: env docker
 
-# Build the application
-build:
-	go build -o bin/car-aggregator .
+docker: greetings
+	docker compose up -d
 
-# Run the application locally
-run:
-	go run main.go
+docker-down: 
+	docker compose down
 
-# Run unit tests
-test:
-	go test -v ./internal/...
+env:
+	@if [ ! -f .env ]; then \
+		echo "Создание файла .env из .env.example..."; \
+		cp .env.example .env; \
+		echo "Файл .env создан. Пожалуйста, откройте его и заполните необходимые секретные ключи."; \
+		echo "!!! ВНИМАНИЕ: Запуск остановлен. Пожалуйста, отредактируйте .env и запустите 'make' снова."; \
+		exit 1; \
+	fi
+	@if grep -q '<ЗАПОЛНИТЕ' .env; then \
+		echo "!!! ВНИМАНИЕ: В файле .env все еще есть незаполненные секретные ключи."; \
+		echo "Пожалуйста, отредактируйте .env и замените все значения, содержащие '<ЗАПОЛНИТЕ...>'."; \
+		echo "Запуск остановлен."; \
+		exit 1; \
+	fi
 
-# Run integration tests (requires API keys in .env)
-test-integration:
-	go test -v ./integration/...
 
-# Run all tests
-test-all: test test-integration
+greetings:
+	@echo "Hello! We will start the docker container for you. Please wait a moment..."
 
-# Run tests with coverage
-test-coverage:
-	go test -cover ./...
-
-# Clean build artifacts
 clean:
-	rm -rf bin/
-	go clean
-
-# Build Docker image
-docker-build:
-	docker build -t car-aggregator .
-
-# Run application in Docker
-docker-run:
-	docker-compose up --build
-
-# Run linter (requires golangci-lint)
-lint:
-	golangci-lint run
-
-# Download dependencies
-deps:
-	go mod download
-	go mod tidy
-
-# Format code
-fmt:
-	go fmt ./...
-
-# Vet code
-vet:
-	go vet ./...
+	docker compose down

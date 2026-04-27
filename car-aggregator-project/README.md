@@ -1,158 +1,196 @@
-# Car Aggregator (Simplified)
+# Автомобильный агрегатор
 
-Упрощенный Car Aggregator API - простой прокси-сервис для получения данных об автомобилях из внешних API.
+Проект подразумевает работу с энд-поинтами дилеров для
+поиска оптимальных цен с улучшенной системой поиска.
 
-## Описание
+---
 
-Car Aggregator - это легковесный HTTP сервис, который интегрируется с внешними API для поиска информации об автомобилях:
-- **dadata.ru** - для нормализации названий автомобилей
-- **carapi.app** - для получения данных об автомобилях и комплектациях
+## Новые возможности поиска
 
-Сервис предназначен для интеграции с платформой Morent и предоставляет простой REST API.
+### Улучшенная система поиска
+
+Агрегатор теперь включает продвинутую систему поиска с:
+
+- **Множественные стратегии поиска**: точный поиск, нормализация через DaData, нечеткий поиск
+- **Отказоустойчивость**: автоматические fallback механизмы при сбоях API
+- **Ранжирование результатов**: интеллектуальная сортировка по релевантности
+- **Поддержка русского языка**: автоматическое распознавание и перевод запросов
+- **Подробное логирование**: отслеживание всех операций поиска для отладки
+
+### Стратегии поиска
+
+1. **Точный поиск (Exact Match)**: для запросов с четко указанной маркой и моделью
+2. **DaData стратегия**: нормализация запросов через DaData API
+3. **Нечеткий поиск (Fuzzy Match)**: для частичных совпадений и опечаток
+4. **Fallback механизмы**: резервные методы поиска при сбоях
+
+---
 
 ## Запуск проекта
 
-### Требования
-- Go 1.21+
-- Docker и Docker Compose (опционально)
+Для запуска проекта Вам понадобятся API ключи от сервисов, используемых
+в проекте:
 
-### Настройка API ключей
+- [dadata.ru](https://dadata.ru/?authorization_popup=1&next=/profile/%23info).
+Достаточно будет зарегистрироваться на сайте и подтвердить свою почту для
+работы с API. Все необходимые данные можно будет найти в 
+[профиле](https://dadata.ru/profile/#info).
 
-1. **dadata.ru**
-   - Зарегистрируйтесь на [dadata.ru](https://dadata.ru/?authorization_popup=1&next=/profile/%23info)
-   - Подтвердите email
-   - Скопируйте API-ключ и Секретный ключ из [профиля](https://dadata.ru/profile/#info)
+- [carapi.app](https://carapi.app/register).
+Что касается данного ресурса, то потребуется зайти во вкладку 
+["API Credentials"](https://carapi.app/profile/users/api), скопировать 
+API Token, а также сгенерировать секрет с помощью кнопки "Generate Secret".
 
-2. **carapi.app**
-   - Зарегистрируйтесь на [carapi.app](https://carapi.app/register)
-   - Перейдите в ["API Credentials"](https://carapi.app/profile/users/api)
-   - Скопируйте API Token и сгенерируйте Api Secret
+Соответственно все данные необходимо будет скопировать в файл `.env` в 
+корневой папке проекта, который будет выглядеть следующим образом:
 
-3. **Конфигурация**
-   - Скопируйте `.env.example` в `.env`
-   - Заполните API ключи в файле `.env`
+```env
+# API
+DADATA_API_KEY=<copy here your "API-ключ">
+DADATA_SECRET_KEY=<copy here your "Секретный ключ">
+CARAPI_TOKEN=<copy here your "API Token">
+CARAPI_SECRET=<copy here your "Api Secret">
 
-### Локальный запуск
-
-```bash
-# Установка зависимостей
-go mod download
-
-# Запуск сервиса
-go run main.go
+# Search Configuration (optional)
+SEARCH_CONFIG_FILE=search_config.json
+SEARCH_LOG_LEVEL=info
+DADATA_TIMEOUT=10s
+CARAPI_TIMEOUT=15s
 ```
 
-### Запуск через Docker
+---
 
-```bash
-# Сборка и запуск
-docker-compose up --build
+## Конфигурация поиска
 
-# Запуск в фоне
-docker-compose up -d --build
-```
+Создайте файл `search_config.json` для настройки параметров поиска:
 
-## API Endpoints
-
-### GET /search
-Поиск автомобилей по названию.
-
-**Запрос:**
 ```json
+{
+  "dadata": {
+    "timeout": "10s",
+    "max_results": 5,
+    "enabled": true
+  },
+  "carapi": {
+    "timeout": "15s",
+    "max_retries": 3,
+    "rate_limit": 100
+  },
+  "fallback": {
+    "enabled": true,
+    "fuzzy_threshold": 0.7,
+    "popular_models": [
+      "Golf", "Camry", "Civic", "Corolla", "Focus"
+    ]
+  },
+  "logging": {
+    "level": "info",
+    "enable_debug_info": false
+  }
+}
+```
+
+---
+
+## Взаимодействие
+
+### Основной эндпоинт поиска
+
+Сервис имеет улучшенный энд-поинт (`http://localhost:8080/search/trims`), 
+предоставляющий расширенную информацию об автомобилях.
+
+#### Базовый запрос:
+```bash
+POST http://localhost:8080/search/trims
+Content-Type: application/json
+
 {
   "q": "Volkswagen Golf"
 }
 ```
 
-**Ответ:**
-```json
-{
-  "info": "Vehicle Information:\n\nAvailable Trims (Total: 39):\n- 2015 Volkswagen Golf TSI Launch Edition (MSRP: $17995)\n TSI Launch Edition 2dr Hatchback (1.8L 4cyl Turbo 5M)\n..."
-}
-```
-
-### GET /search/trims?car_id=123
-Получение комплектаций для конкретного автомобиля.
-
-**Ответ:**
-```json
-{
-  "info": "Available Trims (Total: 5):\n- TSI S (MSRP: $19295)\n TSI S 2dr Hatchback (1.8L 4cyl Turbo 5M)\n..."
-}
-```
-
-### GET /health
-Проверка состояния сервиса.
-
-**Ответ:**
-```json
-{
-  "status": "ok",
-  "service": "car-aggregator"
-}
-```
-
-## Архитектура
-
-Упрощенная архитектура без базы данных и очередей:
-
-```
-Morent → Car Aggregator → External APIs (dadata.ru, carapi.app)
-```
-
-### Структура проекта
-
-```
-car-aggregator-simplified/
-├── main.go                 # Точка входа приложения
-├── internal/
-│   ├── handlers/           # HTTP обработчики
-│   │   ├── router.go       # Настройка маршрутов
-│   │   └── search.go       # Обработчик поиска
-│   └── services/           # Сервисы для внешних API
-│       ├── dadata.go       # Клиент dadata.ru
-│       └── carapi.go       # Клиент carapi.app
-├── go.mod                  # Go модули
-├── Dockerfile              # Docker образ
-├── docker-compose.yml      # Docker Compose конфигурация
-├── .env.example            # Пример переменных окружения
-└── README.md               # Документация
-```
-
-## Интеграция с Morent
-
-Сервис полностью совместим с существующей интеграцией Morent:
-- Использует те же эндпоинты `/search` и `/search/trims`
-- Возвращает данные в том же формате
-- Работает на том же порту `:8080`
-
-Настройка в Morent:
-```env
-AGGREGATOR_BASE_URL=http://localhost:8080
-```
-
-## Мониторинг
-
-- **Health Check**: `GET /health` - проверка состояния сервиса
-- **Логи**: все ошибки логируются в stdout
-- **Метрики**: базовые HTTP метрики через Gin framework
-
-## Разработка
-
-### Тестирование
+#### Расширенный запрос с опциями:
 ```bash
-# Запуск тестов
-go test ./...
+POST http://localhost:8080/search/trims
+Content-Type: application/json
 
-# Тесты с покрытием
-go test -cover ./...
+{
+  "q": "Гольф",
+  "filters": {
+    "year_after": 2015,
+    "year_before": 2023,
+    "price_from": 20000,
+    "price_to": 50000
+  }
+}
 ```
 
-### Линтинг
-```bash
-# Установка golangci-lint
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+### Примеры запросов
 
-# Запуск линтера
-golangci-lint run
+#### 1. Поиск на английском:
+```json
+{
+  "q": "Toyota Camry"
+}
+```
+
+#### 2. Поиск на русском:
+```json
+{
+  "q": "Тойота Камри"
+}
+```
+
+#### 3. Поиск с годом:
+```json
+{
+  "q": "2020 BMW X5"
+}
+```
+
+#### 4. Поиск только модели:
+```json
+{
+  "q": "Golf"
+}
+```
+
+#### 5. Нечеткий поиск (с опечатками):
+```json
+{
+  "q": "Volswagen Golff"
+}
+```
+
+### Формат ответа
+
+Улучшенный ответ включает:
+
+```json
+{
+  "query": "Volkswagen Golf",
+  "count": 15,
+  "cars": [
+    {
+      "id": 1,
+      "year": 2021,
+      "make": "Volkswagen",
+      "model": "Golf",
+      "trim": "TSI S",
+      "description": "TSI S 4dr Hatchback (1.4L 4cyl Turbo 8A)",
+      "msrp": 23195,
+      "transmission": "Automatic",
+      "seats": 5,
+      "fuel": 6.7,
+      "imageUrl": "https://example.com/image.jpg"
+    }
+  ],
+  "suggestions": [
+    "Volkswagen Passat",
+    "Volkswagen Jetta"
+  ]
+}
+```
+
+--
 ```
