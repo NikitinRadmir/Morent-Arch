@@ -66,7 +66,7 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	url, err := h.storage.Upload(ctx, h.cfg.MinioEndpoint, h.cfg.MinioUseSSL, name, reader, size, header.Header.Get("Content-Type"))
+	url, err := h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, name, reader, size, header.Header.Get("Content-Type"))
 	if err != nil {
 		http.Error(w, "upload failed: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -76,4 +76,3 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{"url":"%s"}`, url)
 }
-

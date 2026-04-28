@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -65,6 +66,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Token: token,
 		User:  *user,
 	}
+	h.setSessionCookie(w, token)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
@@ -111,14 +113,50 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Token: token,
 		User:  *user,
 	}
+	h.setSessionCookie(w, token)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token := h.extractToken(r)
+	if token == "" {
+		http.Error(w, "missing token", http.StatusUnauthorized)
+		return
+	}
+	lower := strings.ToLower(token)
+	if strings.HasPrefix(lower, "bearer ") {
+		token = strings.TrimSpace(token[7:])
+	}
+
+	if err := h.service.Logout(token); err != nil {
+		_ = h.logService.LogEvent(ctx, service.LogEvent{
+			Time:    time.Now(),
+			Type:    service.LogAuth,
+			Action:  "logout",
+			Result:  "error",
+			Message: err.Error(),
+		})
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	_ = h.logService.LogEvent(ctx, service.LogEvent{
+		Time:    time.Now(),
+		Type:    service.LogAuth,
+		Action:  "logout",
+		Result:  "success",
+		Message: "user logged out",
+	})
+	h.clearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	token := h.extractToken(r)
 	if token == "" {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
@@ -161,7 +199,7 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 // UpdateProfile updates basic user profile fields.
 func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	token := h.extractToken(r)
 	if token == "" {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
@@ -223,7 +261,7 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 // ChangePassword changes user's password.
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	token := h.extractToken(r)
 	if token == "" {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
@@ -282,4 +320,61 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Result: "success",
 	})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, token string) {
+	if token == "" {
+		return
+	}
+	cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+	if cookieName == "" {
+		cookieName = "morent_session"
+	}
+	secure := strings.EqualFold(strings.TrimSpace(os.Getenv("SESSION_COOKIE_SECURE")), "true")
+	domain := strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN"))
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		Domain:   domain,
+	})
+}
+
+func (h *AuthHandler) clearSessionCookie(w http.ResponseWriter) {
+	cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+	if cookieName == "" {
+		cookieName = "morent_session"
+	}
+	domain := strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN"))
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Domain:   domain,
+		MaxAge:   -1,
+	})
+}
+
+func (h *AuthHandler) extractToken(r *http.Request) string {
+	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	if token == "" {
+		cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+		if cookieName == "" {
+			cookieName = "morent_session"
+		}
+		cookie, err := r.Cookie(cookieName)
+		if err == nil && cookie != nil {
+			token = strings.TrimSpace(cookie.Value)
+		}
+	}
+	lower := strings.ToLower(token)
+	if strings.HasPrefix(lower, "bearer ") {
+		token = strings.TrimSpace(token[7:])
+	}
+	return token
 }

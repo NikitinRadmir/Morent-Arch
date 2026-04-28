@@ -4,7 +4,7 @@ import (
 	"morent-backend/internal/models"
 
 	"gorm.io/gorm"
-    "strings"
+	"gorm.io/gorm/clause"
 )
 
 type FavoriteRepository struct {
@@ -38,15 +38,15 @@ func (r *FavoriteRepository) Create(userID, carID uint) error {
 		UserID: userID,
 		CarID:  carID,
 	}
-	err := r.db.Where("user_id = ? AND car_id = ?", userID, carID).FirstOrCreate(&favorite).Error
-	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-		return nil // already exists, считаем успех
-	}
-	return err
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "car_id"}},
+		DoNothing: true,
+	}).Create(&favorite).Error
 }
 
 func (r *FavoriteRepository) Delete(userID, carID uint) error {
-	return r.db.Where("user_id = ? AND car_id = ?", userID, carID).Delete(&models.Favorite{}).Error
+	// Используем hard delete, чтобы запись реально удалялась из БД.
+	return r.db.Unscoped().Where("user_id = ? AND car_id = ?", userID, carID).Delete(&models.Favorite{}).Error
 }
 
 // Remove — алиас для Delete, удобен в админке.

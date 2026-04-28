@@ -3,12 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	favoritesdto "morent-backend/internal/modules/favorites/httpdto"
 	"morent-backend/internal/models"
+	favoritesdto "morent-backend/internal/modules/favorites/httpdto"
 	"morent-backend/internal/service"
 )
 
@@ -150,6 +151,16 @@ func (h *FavoriteHandler) Remove(w http.ResponseWriter, r *http.Request) {
 
 func (h *FavoriteHandler) authenticate(r *http.Request) (*models.User, error) {
 	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	if token == "" {
+		cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+		if cookieName == "" {
+			cookieName = "morent_session"
+		}
+		cookie, err := r.Cookie(cookieName)
+		if err == nil && cookie != nil {
+			token = strings.TrimSpace(cookie.Value)
+		}
+	}
 	if token == "" {
 		return nil, service.ErrInvalidToken
 	}
