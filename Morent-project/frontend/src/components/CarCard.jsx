@@ -5,7 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }) => {
     const navigate = useNavigate();
     const { isAuthenticated, isFavorite, toggleFavorite } = useContext(AuthContext);
-    const isFav = isAuthenticated && isFavorite(id);
+    const carId = Number(id);
+    const isFav = isAuthenticated && Number.isFinite(carId) && isFavorite(carId);
 
     const handleFavoriteClick = async (e) => {
         e.preventDefault();
@@ -15,7 +16,7 @@ const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }
             return;
         }
         try {
-            await toggleFavorite(id);
+            await toggleFavorite(carId);
         } catch (error) {
             console.error('Failed to toggle favorite', error);
         }

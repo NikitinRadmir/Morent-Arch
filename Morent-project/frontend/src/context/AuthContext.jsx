@@ -2,11 +2,10 @@ import React, { createContext, useCallback, useEffect, useMemo, useState } from 
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:1488';
 const AUTH_USER_KEY = 'morent_auth_user';
-const AUTH_TOKEN_KEY = 'morent_auth_token';
+const storage = window.sessionStorage;
 
 export const AuthContext = createContext({
     user: null,
-    token: null,
     isAuthenticated: false,
     favorites: [],
     favoritesLoading: false,
@@ -21,17 +20,11 @@ export const AuthContext = createContext({
     authRequest: async () => {},
 });
 
-const persistState = (user, token) => {
+const persistState = (user) => {
     if (user) {
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
     } else {
-        localStorage.removeItem(AUTH_USER_KEY);
-    }
-
-    if (token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, token);
-    } else {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
+        storage.removeItem(AUTH_USER_KEY);
     }
 };
 
@@ -57,18 +50,29 @@ const parseError = async (response) => {
     return response.statusText || 'Request failed';
 };
 
+const normalizeFavorites = (data) => {
+    if (!Array.isArray(data)) return [];
+    return data
+        .map((item) => ({ ...item, id: Number(item.id) }))
+        .filter((item) => Number.isFinite(item.id));
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
-        const stored = localStorage.getItem(AUTH_USER_KEY);
+        const stored = storage.getItem(AUTH_USER_KEY);
         return stored ? JSON.parse(stored) : null;
     });
-    const [token, setToken] = useState(() => localStorage.getItem(AUTH_TOKEN_KEY));
     const [favorites, setFavorites] = useState([]);
     const [favoritesLoading, setFavoritesLoading] = useState(false);
 
     useEffect(() => {
-        persistState(user, token);
-    }, [user, token]);
+        persistState(user);
+    }, [user]);
+
+    const clearAuthState = useCallback(() => {
+        setUser(null);
+        setFavorites([]);
+    }, []);
 
     const sendRequest = useCallback(async (path, payload) => {
         const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -76,6 +80,7 @@ export const AuthProvider = ({ children }) => {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -87,20 +92,20 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const authRequest = useCallback(async (path, options = {}) => {
-        if (!token) {
-            throw new Error('Not authenticated');
-        }
         const response = await fetch(`${API_BASE_URL}${path}`, {
             method: options.method || 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
                 ...(options.headers || {}),
             },
+            credentials: 'include',
             body: options.body,
         });
         if (!response.ok) {
             const message = await parseError(response);
+            if (response.status === 401) {
+                clearAuthState();
+            }
             throw new Error(message);
         }
         if (response.status === 204) {
@@ -108,29 +113,29 @@ export const AuthProvider = ({ children }) => {
         }
         const text = await response.text();
         return text ? JSON.parse(text) : null;
-    }, [token]);
+    }, [clearAuthState]);
 
     const loadFavorites = useCallback(async () => {
-        if (!token) {
+        if (!user) {
             setFavorites([]);
             return;
         }
         try {
             setFavoritesLoading(true);
             const data = await authRequest('/favorites');
-            setFavorites(Array.isArray(data) ? data : []);
+            setFavorites(normalizeFavorites(data));
         } catch (error) {
             console.error('Failed to load favorites', error);
+            setFavorites([]);
         } finally {
             setFavoritesLoading(false);
         }
-    }, [token, authRequest]);
+    }, [user, authRequest]);
 
     const register = useCallback(async ({ name, email, password }) => {
         try {
             const data = await sendRequest('/auth/register', { name, email, password });
             setUser(data.user);
-            setToken(data.token);
             setFavorites([]);
             return { success: true, message: 'Registration successful' };
         } catch (error) {
@@ -142,7 +147,6 @@ export const AuthProvider = ({ children }) => {
         try {
             const data = await sendRequest('/auth/login', { email, password });
             setUser(data.user);
-            setToken(data.token);
             await loadFavorites();
             return { success: true, message: 'Welcome back!' };
         } catch (error) {
@@ -150,18 +154,24 @@ export const AuthProvider = ({ children }) => {
         }
     }, [sendRequest, loadFavorites]);
 
-    const logout = useCallback(() => {
-        setUser(null);
-        setToken(null);
-        setFavorites([]);
-    }, []);
+    const logout = useCallback(async () => {
+        try {
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (error) {
+            console.warn('Logout request failed', error);
+        } finally {
+            clearAuthState();
+        }
+    }, [clearAuthState]);
 
     const fetchProfile = useCallback(async () => {
-        if (!token) return null;
         const data = await authRequest('/auth/profile');
         setUser(data);
         return data;
-    }, [authRequest, token]);
+    }, [authRequest]);
 
     const updateProfile = useCallback(async (payload) => {
         const data = await authRequest('/auth/profile', {
@@ -181,26 +191,33 @@ export const AuthProvider = ({ children }) => {
     }, [authRequest]);
 
     const addFavorite = useCallback(async (carId) => {
-        await authRequest('/favorites', {
-            method: 'POST',
-            body: JSON.stringify({ carId }),
-        });
-        await loadFavorites();
+        try {
+            await authRequest('/favorites', {
+                method: 'POST',
+                body: JSON.stringify({ carId: Number(carId) }),
+            });
+        } finally {
+            await loadFavorites();
+        }
     }, [authRequest, loadFavorites]);
 
     const removeFavorite = useCallback(async (carId) => {
-        await authRequest(`/favorites/${carId}`, {
-            method: 'DELETE',
-        });
-        await loadFavorites();
+        try {
+            await authRequest(`/favorites/${Number(carId)}`, {
+                method: 'DELETE',
+            });
+        } finally {
+            await loadFavorites();
+        }
     }, [authRequest, loadFavorites]);
 
     const isFavorite = useCallback((carId) => {
-        return favorites.some((car) => car.id === carId);
+        const normalized = Number(carId);
+        return favorites.some((car) => Number(car.id) === normalized);
     }, [favorites]);
 
     const toggleFavorite = useCallback(async (carId) => {
-        if (!token) {
+        if (!user) {
             throw new Error('Not authenticated');
         }
         if (isFavorite(carId)) {
@@ -208,10 +225,10 @@ export const AuthProvider = ({ children }) => {
         } else {
             await addFavorite(carId);
         }
-    }, [token, isFavorite, addFavorite, removeFavorite]);
+    }, [user, isFavorite, addFavorite, removeFavorite]);
 
     useEffect(() => {
-        if (token) {
+        if (user) {
             loadFavorites();
             // Если роль отсутствует, обновляем профиль для получения актуальных данных
             if (user && !user.role && !user.Role) {
@@ -220,14 +237,19 @@ export const AuthProvider = ({ children }) => {
         } else {
             setFavorites([]);
         }
-    }, [token, loadFavorites, user, fetchProfile]);
+    }, [loadFavorites, user, fetchProfile]);
+
+    useEffect(() => {
+        if (!user) {
+            fetchProfile().catch(() => {});
+        }
+    }, [user, fetchProfile]);
 
     const value = useMemo(() => ({
         user,
-        token,
         favorites,
         favoritesLoading,
-        isAuthenticated: Boolean(user && token),
+        isAuthenticated: Boolean(user),
         register,
         login,
         logout,
@@ -240,7 +262,7 @@ export const AuthProvider = ({ children }) => {
         fetchProfile,
         updateProfile,
         changePassword,
-    }), [user, token, favorites, favoritesLoading, register, login, logout, loadFavorites, addFavorite, removeFavorite, toggleFavorite, isFavorite, authRequest, fetchProfile, updateProfile, changePassword]);
+    }), [user, favorites, favoritesLoading, register, login, logout, loadFavorites, addFavorite, removeFavorite, toggleFavorite, isFavorite, authRequest, fetchProfile, updateProfile, changePassword]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

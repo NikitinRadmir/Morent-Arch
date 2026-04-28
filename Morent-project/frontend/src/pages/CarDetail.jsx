@@ -21,7 +21,7 @@ const CarDetail = () => {
             try {
                 const data = await graphqlRequest(
                     `
-                    query CarDetail($id: ID!) {
+                    query CarDetail($id: ID!, $carId: Int!) {
                         car(id: $id) {
                             id
                             name
@@ -33,7 +33,7 @@ const CarDetail = () => {
                             imgSrc
                             description
                         }
-                        comments(carId: $id) {
+                        comments(carId: $carId) {
                             id
                             carId
                             userId
@@ -57,7 +57,7 @@ const CarDetail = () => {
                         }
                     }
                     `,
-                    { id }
+                    { id, carId: Number(id) }
                 );
                 setCar(data.car || null);
                 setReview(data.comments || []);

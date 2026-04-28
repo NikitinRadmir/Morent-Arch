@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const uploadImage = async (file, setStatus, token) => {
+const uploadImage = async (file, setStatus) => {
   if (!file) return '';
   setStatus && setStatus('uploading');
   const formData = new FormData();
@@ -11,7 +11,7 @@ const uploadImage = async (file, setStatus, token) => {
     const res = await fetch(`${API_BASE_URL}/media/upload`, {
     method: 'POST',
     body: formData,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: 'include',
   });
   if (!res.ok) {
       setStatus && setStatus('error');
@@ -28,7 +28,7 @@ const uploadImage = async (file, setStatus, token) => {
 };
 
 const Settings = () => {
-    const { isAuthenticated, user, fetchProfile, updateProfile, changePassword, token } = useContext(AuthContext);
+    const { isAuthenticated, user, fetchProfile, updateProfile, changePassword } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('avatar');
     const [avatarUrl, setAvatarUrl] = useState('');
     const [nickname, setNickname] = useState('');
@@ -162,7 +162,7 @@ const Settings = () => {
                                     if(e.target.files?.[0]) {
                                         try {
                                             setAvatarUploadStatus('uploading');
-                                            const url = await uploadImage(e.target.files[0], setAvatarUploadStatus, token);
+                                            const url = await uploadImage(e.target.files[0], setAvatarUploadStatus);
                                             setAvatarUrl(url);
                                         } catch (err) {
                                             alert("Ошибка загрузки аватара: " + err.message);
