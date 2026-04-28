@@ -1,28 +1,14 @@
-# Stage 1: Build the application
-FROM node:22 AS build
-
-# Установка рабочей директории
+FROM node:22-alpine AS build
 WORKDIR /app
-
-# Копирование package.json и package-lock.json
 COPY package*.json ./
-
-# Установка зависимостей
-RUN npm install
-
-# Глобальная установка serve (для обслуживания приложения)
-RUN npm install -g serve
-
-RUN node -v && npm -v
-
-# Копирование остальных файлов проекта
+RUN npm ci
 COPY . .
+ARG VITE_API_URL=http://localhost:1488
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
 
-# Сборка приложения
-#RUN npm run build
-
-# Открытие порта
-EXPOSE 3000
-
-# Запуск приложения с помощью serve
-CMD ["serve", "-s", "dist"]
+FROM nginx:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

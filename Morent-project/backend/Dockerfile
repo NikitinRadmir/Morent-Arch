@@ -1,12 +1,13 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN cd backend && go build -o backend_server ./cmd/server
+RUN go build -o backend_server ./cmd/server
 
 FROM alpine:3.18
 WORKDIR /app
-COPY --from=builder /app/backend/backend_server .
-COPY backend/config.json ./config.json
+COPY --from=builder /app/backend_server .
 EXPOSE 1488
 CMD ["./backend_server"]
 
