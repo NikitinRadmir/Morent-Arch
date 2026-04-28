@@ -2,7 +2,7 @@
 using EmailService.Core.Contracts;
 using EmailService.Core.Exceptions;
 using EmailService.Core.Models;
-using EmailService.Infrastructure.Options;      // ← ДОБАВИТЬ (для TemplatesOptions)
+using EmailService.Infrastructure.Options;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Scriban;

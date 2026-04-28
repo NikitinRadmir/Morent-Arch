@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace EmailService.Worker.Configuration;
 
-namespace EmailService.Worker.Configuration
+public class WorkerOptions
 {
-    internal class WorkerOptions
-    {
-    }
+    public int MaxConcurrency { get; set; } = 4;
+    public int MaxRetries { get; set; } = 3; 
+    public TimeSpan ShutdownTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public string TemplatesPath { get; set; } = "./Templates";
 }
