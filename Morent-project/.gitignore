@@ -11,12 +11,15 @@ go.work
 
 .idea/
 .vscode/
+.vs
 *.swp
 *.swo
 *~
 
 .DS_Store
 Thumbs.db
+
+server.exe
 
 dist/
 build/

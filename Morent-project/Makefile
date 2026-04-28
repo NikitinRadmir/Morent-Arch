@@ -1,6 +1,6 @@
 # Makefile для Morent
 
-DOCKER_COMPOSE=docker-compose
+DOCKER_COMPOSE=docker compose
 
 .PHONY: build up down restart logs backend seed frontend
 
@@ -10,7 +10,7 @@ build:
 
 # Запуск docker-compose
 up:
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --build
 
 # Остановка и удаление контейнеров
 # (останавливает и удаляет все сервисы)
@@ -21,6 +21,11 @@ down:
 restart:
 	$(MAKE) down
 	$(MAKE) up
+
+# Жесткий перезапуск
+restart-force:
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) up -d --build
 
 # Логи всех сервисов
 logs:
