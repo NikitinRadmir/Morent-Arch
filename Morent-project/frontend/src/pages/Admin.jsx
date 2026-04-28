@@ -3,15 +3,20 @@ import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import NotFound from './NotFound';
 
 const API_BASE = API_BASE_URL;
+const estimateRentalPrice = (msrp) => {
+    const value = Number(msrp);
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    return value * 0.01 / 2;
+};
 
-const uploadImage = async (file, token) => {
+const uploadImage = async (file) => {
     if (!file) return '';
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${API_BASE}/media/upload`, {
         method: 'POST',
         body: formData,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
     });
     if (!res.ok) {
         const txt = await res.text();
@@ -69,7 +74,7 @@ const Modal = ({ title, children, onClose }) => (
 );
 
 const Admin = () => {
-    const { token, user, fetchProfile } = useContext(AuthContext);
+    const { user, fetchProfile } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState('cars');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -79,14 +84,18 @@ const Admin = () => {
     const [comments, setComments] = useState([]);
     const [favorites, setFavorites] = useState([]);
     const [logs, setLogs] = useState([]);
+    const [aggregatorQuery, setAggregatorQuery] = useState('');
+    const [aggregatorCars, setAggregatorCars] = useState([]);
+    const [aggregatorLoading, setAggregatorLoading] = useState(false);
+    const [aggregatorStatus, setAggregatorStatus] = useState('');
+    const [importingTrimId, setImportingTrimId] = useState(null);
     const [modal, setModal] = useState(null); // { type, form, data }
     const [uploadingCarImg, setUploadingCarImg] = useState(false);
     const [uploadingUserAvatar, setUploadingUserAvatar] = useState(false);
 
     const jsonHeaders = useMemo(() => ({
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }), [token]);
+    }), []);
 
     useEffect(() => {
         // Проверка роли при загрузке
@@ -106,12 +115,11 @@ const Admin = () => {
     }
 
     const fetchJson = async (url, options = {}) => {
-        // всегда добавляем авторизацию, если есть токен
+        // cookie-сессия отправляется автоматически
         const headers = {
             ...(options.headers || {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
-        const resp = await fetch(url, { ...options, headers });
+        const resp = await fetch(url, { ...options, headers, credentials: 'include' });
         if (!resp.ok) {
             const text = await resp.text();
             throw new Error(text || resp.statusText);
@@ -175,6 +183,53 @@ const Admin = () => {
     const handleDeleteCar = async (id) => {
         await fetchJson(`${API_BASE}/cars/${id}`, { method: 'DELETE', headers: jsonHeaders });
         await loadTab('cars');
+    };
+
+    const loadAggregatorCars = async () => {
+        const query = aggregatorQuery.trim();
+        if (!query) {
+            setAggregatorStatus('Введите запрос, например "Golf" или "Toyota Camry"');
+            setAggregatorCars([]);
+            return;
+        }
+
+        setAggregatorLoading(true);
+        setAggregatorStatus('');
+        try {
+            const list = await fetchJson(`${API_BASE}/Admin/Aggregator/Cars?q=${encodeURIComponent(query)}`);
+            setAggregatorCars(list?.cars || []);
+            if (!list?.cars?.length) {
+                setAggregatorStatus('По вашему запросу в агрегаторе ничего не найдено');
+            }
+        } catch (e) {
+            const message = e.message || 'Ошибка запроса к агрегатору';
+            if (message.toLowerCase().includes('агрегатора') || message.includes('503')) {
+                setAggregatorStatus('Микросервис агрегатора сейчас недоступен');
+            } else {
+                setAggregatorStatus(message);
+            }
+            setAggregatorCars([]);
+        } finally {
+            setAggregatorLoading(false);
+        }
+    };
+
+    const importAggregatorCar = async (trim) => {
+        setImportingTrimId(trim.id);
+        setAggregatorStatus('');
+        try {
+            await fetchJson(`${API_BASE}/Admin/Aggregator/Import`, {
+                method: 'POST',
+                headers: jsonHeaders,
+                body: JSON.stringify({ trim }),
+            });
+            setAggregatorStatus(`Машина "${trim.make} ${trim.model} ${trim.trim}" добавлена в БД`);
+            await loadTab('cars');
+        } catch (e) {
+            setAggregatorStatus(e.message || 'Не удалось импортировать машину');
+        } finally {
+            setImportingTrimId(null);
+        }
     };
 
     const handleCreateUser = async (payload) => {
@@ -339,6 +394,72 @@ const Admin = () => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+            <div className="admin-aggregator">
+                <h4>Машины из агрегатора</h4>
+                <div className="admin-aggregator__controls">
+                    <input
+                        value={aggregatorQuery}
+                        onChange={(e) => setAggregatorQuery(e.target.value)}
+                        placeholder="Например: Golf, BMW X5, Toyota Camry"
+                    />
+                    <button className="admin-btn" onClick={loadAggregatorCars} disabled={aggregatorLoading}>
+                        {aggregatorLoading ? 'Поиск...' : 'Найти в агрегаторе'}
+                    </button>
+                </div>
+                {aggregatorStatus && <div className="admin-alert">{aggregatorStatus}</div>}
+                {aggregatorCars.length > 0 && (
+                    <div className="admin-table-wrapper">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Фото</th>
+                                    <th>Год</th>
+                                    <th>Марка</th>
+                                    <th>Модель</th>
+                                    <th>Комплектация</th>
+                                    <th>Коробка</th>
+                                    <th>Мест</th>
+                                    <th>Расход (л/100км)</th>
+                                    <th>Примерная цена аренды</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {aggregatorCars.map((trim) => (
+                                    <tr key={trim.id}>
+                                        <td>{trim.id}</td>
+                                        <td>
+                                            {trim.imageUrl ? (
+                                                <img src={trim.imageUrl} alt={`${trim.make} ${trim.model}`} className="admin-table__img" />
+                                            ) : (
+                                                <span className="admin-table__no-img">—</span>
+                                            )}
+                                        </td>
+                                        <td>{trim.year}</td>
+                                        <td>{trim.make}</td>
+                                        <td>{trim.model}</td>
+                                        <td>{trim.trim}</td>
+                                        <td>{trim.transmission || '—'}</td>
+                                        <td>{trim.seats || '—'}</td>
+                                        <td>{trim.fuel ? trim.fuel.toFixed(1) : '—'}</td>
+                                        <td>{trim.msrp ? `$${estimateRentalPrice(trim.msrp).toFixed(2)}` : '—'}</td>
+                                        <td className="admin-table__actions">
+                                            <button
+                                                className="admin-btn"
+                                                onClick={() => importAggregatorCar(trim)}
+                                                disabled={importingTrimId === trim.id}
+                                            >
+                                                {importingTrimId === trim.id ? 'Добавление...' : 'Добавить в БД'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -584,7 +705,7 @@ const Admin = () => {
                                     if (e.target.files?.[0]) {
                                         try {
                                             setUploadingCarImg(true);
-                                            const url = await uploadImage(e.target.files[0], token);
+                                            const url = await uploadImage(e.target.files[0]);
                                             updateModalForm({ imgSrc: url });
                                         } catch (err) {
                                             setError('Ошибка загрузки изображения: ' + err.message);
@@ -659,7 +780,7 @@ const Admin = () => {
                                     if (e.target.files?.[0]) {
                                         try {
                                             setUploadingUserAvatar(true);
-                                            const url = await uploadImage(e.target.files[0], token);
+                                            const url = await uploadImage(e.target.files[0]);
                                             updateModalForm({ avatarUrl: url });
                                         } catch (err) {
                                             setError('Ошибка загрузки аватара: ' + err.message);

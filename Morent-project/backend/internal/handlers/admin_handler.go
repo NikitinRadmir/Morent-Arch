@@ -2,49 +2,70 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
+	"morent-backend/internal/config"
 	"morent-backend/internal/models"
 	adminapp "morent-backend/internal/modules/admin/app"
 	admindto "morent-backend/internal/modules/admin/httpdto"
 	"morent-backend/internal/service"
+	"morent-backend/internal/storage"
 )
 
 type AdminHandler struct {
 	adminService  *adminapp.Service
 	logService    *service.LogService
 	carService    *service.CarService
+	cfg           *config.Config
+	storage       *storage.MinioStorage
 	httpClient    *http.Client
 	aggregatorURL string
+	retryCount    int
 }
 
 func NewAdminHandler(
 	adminService *adminapp.Service,
 	logService *service.LogService,
 	carService *service.CarService,
+	cfg *config.Config,
+	storage *storage.MinioStorage,
 ) *AdminHandler {
 	baseURL := strings.TrimRight(os.Getenv("AGGREGATOR_BASE_URL"), "/")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
+	}
+	timeoutSec := cfg.AggregatorTimeoutSec
+	if timeoutSec <= 0 {
+		timeoutSec = 35
+	}
+	retryCount := cfg.AggregatorRetryCount
+	if retryCount <= 0 {
+		retryCount = 3
 	}
 
 	return &AdminHandler{
 		adminService: adminService,
 		logService:   logService,
 		carService:   carService,
+		cfg:          cfg,
+		storage:      storage,
 		httpClient: &http.Client{
-			Timeout: 8 * time.Second,
+			Timeout: time.Duration(timeoutSec) * time.Second,
 		},
 		aggregatorURL: baseURL,
+		retryCount:    retryCount,
 	}
 }
 
@@ -393,7 +414,7 @@ func (h *AdminHandler) ListAggregatorCars(w http.ResponseWriter, r *http.Request
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := h.httpClient.Do(req)
+	resp, err := h.doAggregatorRequest(req)
 	if err != nil {
 		http.Error(w, "Сервис агрегатора недоступен", http.StatusServiceUnavailable)
 		return
@@ -489,6 +510,11 @@ func (h *AdminHandler) ImportAggregatorCar(w http.ResponseWriter, r *http.Reques
 	if req.Trim.Seats > 0 {
 		car.Capacity = req.Trim.Seats
 	}
+	if req.Trim.ImageURL != "" {
+		if uploadedURL, err := h.uploadAggregatorImage(r.Context(), req.Trim.ImageURL, req.Trim.Make, req.Trim.Model); err == nil && uploadedURL != "" {
+			car.ImgSrc = uploadedURL
+		}
+	}
 
 	if err := h.carService.Create(&car); err != nil {
 		http.Error(w, "failed to import car: "+err.Error(), http.StatusInternalServerError)
@@ -512,4 +538,50 @@ func parseIDFromPath(path string) (uint64, bool) {
 		return 0, false
 	}
 	return id, true
+}
+
+func (h *AdminHandler) doAggregatorRequest(req *http.Request) (*http.Response, error) {
+	var lastErr error
+	for attempt := 1; attempt <= h.retryCount; attempt++ {
+		cloned := req.Clone(req.Context())
+		resp, err := h.httpClient.Do(cloned)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		sleepMs := int(math.Min(float64(200*attempt), 1200))
+		time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+	}
+	return nil, lastErr
+}
+
+func (h *AdminHandler) uploadAggregatorImage(ctx context.Context, imageURL string, make string, model string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("image fetch failed: %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
+	if err != nil || len(data) == 0 {
+		return "", fmt.Errorf("empty image")
+	}
+
+	ext := filepath.Ext(strings.ToLower(imageURL))
+	if ext == "" || len(ext) > 6 {
+		ext = ".jpg"
+	}
+	objectName := fmt.Sprintf("cars/%d_%s_%s%s", time.Now().UnixNano(), strings.ToLower(strings.TrimSpace(make)), strings.ToLower(strings.TrimSpace(model)), ext)
+	objectName = strings.ReplaceAll(objectName, " ", "_")
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg"
+	}
+	return h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, objectName, bytes.NewReader(data), int64(len(data)), contentType)
 }
