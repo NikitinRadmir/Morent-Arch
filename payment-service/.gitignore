@@ -1,0 +1,30 @@
+# Compiled binaries
+bin/
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test output
+*.test
+*.out
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+.zed/
+*.iml
+
+# Environment (contains secrets)
+.env
+
+# OS
+.DS_Store
+Thumbs.db
