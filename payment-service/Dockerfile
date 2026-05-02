@@ -1,23 +1,11 @@
-# Stage 1: build
 FROM golang:1.22-alpine AS builder
-
 WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
+COPY go.mod ./
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/payments
+RUN CGO_ENABLED=0 GOOS=linux go build -o payment-service ./cmd/server
 
-# Stage 2: final image
 FROM alpine:3.19
-
 WORKDIR /app
-
-COPY --from=builder /app/server .
-COPY docs/ docs/
-COPY ui/ ui/
-
-EXPOSE 8080
-
-CMD ["./server"]
+COPY --from=builder /app/payment-service .
+EXPOSE 8081
+CMD ["./payment-service"]

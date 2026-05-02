@@ -8,8 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"example.com/go-payments/internal/config"
-	httpserver "example.com/go-payments/internal/transport/http"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
