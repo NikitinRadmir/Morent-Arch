@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"example.com/go-payments/internal/domain"
-	"example.com/go-payments/internal/repository/memory"
-	"example.com/go-payments/internal/service"
+	"morent-arch/payment-service/internal/domain"
+	"morent-arch/payment-service/internal/repository/memory"
+	"morent-arch/payment-service/internal/service"
 )
 
 func newTestService() *service.PaymentService {
@@ -157,6 +157,3 @@ func TestGetAccountSummary(t *testing.T) {
 		t.Fatalf("TotalWithdraws = %d, want 500", summary.TotalWithdraws)
 	}
 }
-
-
-

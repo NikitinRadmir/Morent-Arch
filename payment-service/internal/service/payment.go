@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
-	"example.com/go-payments/internal/domain"
-	"example.com/go-payments/internal/repository"
-	"github.com/google/uuid"
+	"morent-arch/payment-service/internal/domain"
+	"morent-arch/payment-service/internal/repository"
 )
 
 type PaymentService struct {
@@ -70,7 +70,7 @@ func (s *PaymentService) CreateAccount(_ context.Context, in CreateAccountInput)
 	now := time.Now()
 
 	acc := &domain.Account{
-		ID:           uuid.NewString(),
+		ID:           newID(),
 		Owner:        strings.TrimSpace(in.Owner),
 		Currency:     in.Currency,
 		Balance:      0,
@@ -170,7 +170,7 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 	}
 
 	tr := &domain.Transfer{
-		ID:            uuid.NewString(),
+		ID:            newID(),
 		FromAccountID: from.ID,
 		ToAccountID:   to.ID,
 		Amount:        in.Amount,
@@ -215,7 +215,7 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 
 		entryTime := time.Now()
 		_ = s.ledger.Append(&domain.LedgerEntry{
-			ID:            uuid.NewString(),
+			ID:            newID(),
 			AccountID:     from.ID,
 			TransferID:    tr.ID,
 			OperationType: domain.OperationTransfer,
@@ -225,7 +225,7 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 		})
 		if in.Fee > 0 {
 			_ = s.ledger.Append(&domain.LedgerEntry{
-				ID:            uuid.NewString(),
+				ID:            newID(),
 				AccountID:     from.ID,
 				TransferID:    tr.ID,
 				OperationType: domain.OperationFee,
@@ -235,7 +235,7 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 			})
 		}
 		_ = s.ledger.Append(&domain.LedgerEntry{
-			ID:            uuid.NewString(),
+			ID:            newID(),
 			AccountID:     to.ID,
 			TransferID:    tr.ID,
 			OperationType: domain.OperationTransfer,
@@ -269,6 +269,9 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 }
 
 func (s *PaymentService) ListHistory(_ context.Context, accountID string, limit int, cursor string) ([]*domain.LedgerEntry, string, error) {
+	if _, err := s.accounts.GetAccountByID(accountID); err != nil {
+		return nil, "", err
+	}
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
@@ -380,7 +383,7 @@ func (s *PaymentService) changeBalance(accountID, currency string, delta domain.
 			desc = "Withdrawal"
 		}
 		entry := &domain.LedgerEntry{
-			ID:            uuid.NewString(),
+			ID:            newID(),
 			AccountID:     accountID,
 			OperationType: opType,
 			Amount:        amount,
@@ -399,16 +402,16 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 	if err != nil {
 		return nil, err
 	}
-	if tr.Status != domain.TransferPosted {
-		return nil, domain.ErrTransferNotPosted
-	}
 	if tr.Status == domain.TransferReversed {
 		return nil, domain.ErrTransferAlreadyReversed
+	}
+	if tr.Status != domain.TransferPosted {
+		return nil, domain.ErrTransferNotPosted
 	}
 
 	// создаем обратный перевод (возвращаем сумму + комиссию)
 	reverseTr := &domain.Transfer{
-		ID:            uuid.NewString(),
+		ID:            newID(),
 		FromAccountID: tr.ToAccountID,
 		ToAccountID:   tr.FromAccountID,
 		Amount:        tr.Amount + tr.Fee, // возвращаем сумму + комиссию
@@ -458,7 +461,7 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 		entryTime := time.Now()
 		// Запись для получателя: списываем сумму перевода
 		_ = s.ledger.Append(&domain.LedgerEntry{
-			ID:            uuid.NewString(),
+			ID:            newID(),
 			AccountID:     from.ID,
 			TransferID:    reverseTr.ID,
 			OperationType: domain.OperationReversal,
@@ -468,7 +471,7 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 		})
 		// Запись для отправителя: возвращаем сумму перевода
 		_ = s.ledger.Append(&domain.LedgerEntry{
-			ID:            uuid.NewString(),
+			ID:            newID(),
 			AccountID:     to.ID,
 			TransferID:    reverseTr.ID,
 			OperationType: domain.OperationReversal,
@@ -479,7 +482,7 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 		// Запись для отправителя: возвращаем комиссию
 		if tr.Fee > 0 {
 			_ = s.ledger.Append(&domain.LedgerEntry{
-				ID:            uuid.NewString(),
+				ID:            newID(),
 				AccountID:     to.ID,
 				TransferID:    reverseTr.ID,
 				OperationType: domain.OperationReversal,
@@ -627,6 +630,22 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 			})
 			continue
 		}
+		if item.Fee < 0 {
+			result.Errors = append(result.Errors, BatchTransferError{
+				Index: i,
+				Item:  item,
+				Error: domain.ErrInvalidFee.Error(),
+			})
+			continue
+		}
+		if !domain.IsSupportedCurrency(item.Currency) {
+			result.Errors = append(result.Errors, BatchTransferError{
+				Index: i,
+				Item:  item,
+				Error: domain.ErrUnsupportedCurrency.Error(),
+			})
+			continue
+		}
 
 		// Проверяем существование счетов
 		from, err := s.accounts.GetAccountByID(item.FromAccountID)
@@ -664,6 +683,14 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 			})
 			continue
 		}
+		if from.Currency != item.Currency || to.Currency != item.Currency {
+			result.Errors = append(result.Errors, BatchTransferError{
+				Index: i,
+				Item:  item,
+				Error: domain.ErrCurrencyMismatch.Error(),
+			})
+			continue
+		}
 
 		totalDebit := item.Amount + item.Fee
 		if from.Balance < totalDebit {
@@ -686,7 +713,7 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 	for i, item := range items {
 		idemKey := ""
 		if idempotencyKeyPrefix != "" {
-			idemKey = idempotencyKeyPrefix + ":" + string(rune(i))
+			idemKey = fmt.Sprintf("%s:%d", idempotencyKeyPrefix, i)
 		}
 
 		tr, err := s.Transfer(context.Background(), TransferInput{
