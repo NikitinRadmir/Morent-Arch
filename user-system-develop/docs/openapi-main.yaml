@@ -1,0 +1,25 @@
+openapi: 3.0.0
+info:
+  title: User System API
+  description: Полная документация API системы управления пользователями
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: API сервер
+
+tags:
+  - name: Authentication
+    description: Аутентификация и авторизация
+  - name: Users
+    description: Управление пользователями
+  - name: Companies
+    description: Управление компаниями
+  - name: Roles
+    description: Управление ролями
+  - name: Role Permissions
+    description: Управление разрешениями ролей
+
+# Пути будут импортированы из отдельных файлов
+# Для использования с swagger-cli:
+# swagger-cli bundle docs/openapi-main.yaml -o docs/openapi-combined.yaml

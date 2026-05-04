@@ -1,0 +1,431 @@
+================================================================================
+  ПРОВЕРКА API User System — шпаргалка для Postman (и curl)
+  Сервис: user-system-develop | Базовый хост по умолчанию: http://localhost:8080
+================================================================================
+
+--- 0. Запуск перед проверками -------------------------------------------------
+
+  docker compose -f user-system-develop/docker-compose.yml up -d --build
+
+  Проверка, что слушает порт (Windows PowerShell):
+
+  Invoke-RestMethod -Uri "http://localhost:8080/health" -Method GET
+
+--- 1. Переменные Postman (Environment) ----------------------------------------
+
+  baseUrl     = http://localhost:8080
+  accessToken = (вставить после Login из поля access_token)
+  refreshToken= (из login/register: refresh_token)
+  companyId   = (UUID компании из ответа register или create company)
+  userId      = (UUID пользователя)
+  roleId      = (UUID роли)
+  permissionId = (UUID права)
+
+  Заголовок авторизации для защищённых запросов:
+
+  Authorization: Bearer {{accessToken}}
+
+  Общие заголовки для JSON:
+
+  Content-Type: application/json
+
+================================================================================
+  SWAGGER (только GET, без тела)
+================================================================================
+
+  GET {{baseUrl}}/health
+
+  GET {{baseUrl}}/swagger/index.html
+  GET {{baseUrl}}/swagger/openapi.yaml
+  GET {{baseUrl}}/swagger
+  GET {{baseUrl}}/swagger/
+
+================================================================================
+  AUTH (часть без Bearer; часть с Bearer)
+================================================================================
+
+--- Регистрация (без Bearer) --------------------------------------------------
+
+  POST {{baseUrl}}/api/auth/register
+  Content-Type: application/json
+
+  {
+    "email": "testuser@example.com",
+    "password": "SecurePass123",
+    "first_name": "Иван",
+    "last_name": "Иванов",
+    "company_name": "ООО Тестовая компания",
+    "phone": "+79991234567",
+    "department": "IT",
+    "position": "Разработчик"
+  }
+
+--- Вход (без Bearer) ---------------------------------------------------------
+
+  POST {{baseUrl}}/api/auth/login
+  Content-Type: application/json
+
+  {
+    "email": "testuser@example.com",
+    "password": "SecurePass123"
+  }
+
+--- Выход (Bearer) ------------------------------------------------------------
+
+  POST {{baseUrl}}/api/auth/logout
+  Authorization: Bearer {{accessToken}}
+
+--- Обновление токена (Bearer + тело с refresh) -------------------------------
+
+  POST {{baseUrl}}/api/auth/refresh
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "refresh_token": "{{refreshToken}}"
+  }
+
+--- Смена пароля (Bearer) -----------------------------------------------------
+
+  PUT {{baseUrl}}/api/auth/change-password
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "old_password": "SecurePass123",
+    "new_password": "SecurePass456"
+  }
+
+================================================================================
+  COMPANIES
+================================================================================
+
+--- Создать компанию (публично, без Bearer) -----------------------------------
+
+  POST {{baseUrl}}/api/companies
+  Content-Type: application/json
+
+  {
+    "name": "Компания из Postman",
+    "description": "Описание",
+    "domain": ""
+  }
+
+  (domain можно опустить или оставить пустым — сервер может подставить своё значение)
+
+--- Список компаний (Bearer) ---------------------------------------------------
+
+  GET {{baseUrl}}/api/companies
+  Authorization: Bearer {{accessToken}}
+
+--- Компания по ID (Bearer) ---------------------------------------------------
+
+  GET {{baseUrl}}/api/companies/{{companyId}}
+  Authorization: Bearer {{accessToken}}
+
+--- Обновить компанию (Bearer) ------------------------------------------------
+
+  PUT {{baseUrl}}/api/companies/{{companyId}}
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "name": "Новое имя компании",
+    "description": "Обновлённое описание",
+    "domain": "new-domain.example",
+    "is_active": true
+  }
+
+--- Удалить компанию (Bearer) -------------------------------------------------
+
+  DELETE {{baseUrl}}/api/companies/{{companyId}}
+  Authorization: Bearer {{accessToken}}
+
+================================================================================
+  USERS (все с Bearer)
+================================================================================
+
+--- Список пользователей ------------------------------------------------------
+
+  GET {{baseUrl}}/api/users
+  Authorization: Bearer {{accessToken}}
+
+--- Создать пользователя -------------------------------------------------------
+
+  POST {{baseUrl}}/api/users
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "company_id": "{{companyId}}",
+    "email": "colleague@example.com",
+    "password": "SecurePass123",
+    "first_name": "Пётр",
+    "last_name": "Петров",
+    "phone": "+79990000000",
+    "department": "IT",
+    "position": "Аналитик"
+  }
+
+--- Профиль текущего пользователя ---------------------------------------------
+
+  GET {{baseUrl}}/api/users/profile
+  Authorization: Bearer {{accessToken}}
+
+--- Обновить профиль ----------------------------------------------------------
+
+  PUT {{baseUrl}}/api/users/profile
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "email": "testuser@example.com",
+    "first_name": "Иван",
+    "last_name": "Иванов",
+    "phone": "+79991234567",
+    "department": "IT",
+    "position": "Senior"
+  }
+
+--- Пользователь по ID --------------------------------------------------------
+
+  GET {{baseUrl}}/api/users/{{userId}}
+  Authorization: Bearer {{accessToken}}
+
+--- Обновить пользователя -----------------------------------------------------
+
+  PUT {{baseUrl}}/api/users/{{userId}}
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "email": "colleague@example.com",
+    "first_name": "Пётр",
+    "last_name": "Петров",
+    "phone": "+79990000000",
+    "department": "IT",
+    "position": "Аналитик",
+    "is_active": true
+  }
+
+--- Удалить пользователя ------------------------------------------------------
+
+  DELETE {{baseUrl}}/api/users/{{userId}}
+  Authorization: Bearer {{accessToken}}
+
+--- Смена пароля пользователя (по user id) -------------------------------------
+
+  PUT {{baseUrl}}/api/users/{{userId}}/change-password
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "old_password": "SecurePass123",
+    "new_password": "AnotherPass456"
+  }
+
+================================================================================
+  ROLES (все с Bearer)
+================================================================================
+
+--- Создать роль ---------------------------------------------------------------
+
+  POST {{baseUrl}}/api/roles
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "company_id": "{{companyId}}",
+    "name": "manager",
+    "description": "Роль менеджера"
+  }
+
+--- Роль по ID ----------------------------------------------------------------
+
+  GET {{baseUrl}}/api/roles/{{roleId}}
+  Authorization: Bearer {{accessToken}}
+
+--- Обновить роль -------------------------------------------------------------
+
+  PUT {{baseUrl}}/api/roles/{{roleId}}
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "name": "manager-updated",
+    "description": "Обновлённое описание"
+  }
+
+--- Удалить роль --------------------------------------------------------------
+
+  DELETE {{baseUrl}}/api/roles/{{roleId}}
+  Authorization: Bearer {{accessToken}}
+
+--- Роли компании --------------------------------------------------------------
+
+  GET {{baseUrl}}/api/roles/company/{{companyId}}
+  Authorization: Bearer {{accessToken}}
+
+================================================================================
+  ROLE PERMISSIONS (все с Bearer)
+================================================================================
+
+--- Назначить право роли -------------------------------------------------------
+
+  POST {{baseUrl}}/api/role-permissions/assign
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "role_id": "{{roleId}}",
+    "permission_id": "{{permissionId}}"
+  }
+
+--- Права роли -----------------------------------------------------------------
+
+  GET {{baseUrl}}/api/role-permissions/roles/{{roleId}}/permissions
+  Authorization: Bearer {{accessToken}}
+
+--- Роли, у которых есть данное право -----------------------------------------
+
+  GET {{baseUrl}}/api/role-permissions/permissions/{{permissionId}}/roles
+  Authorization: Bearer {{accessToken}}
+
+--- Проверка: назначено ли право роли ----------------------------------------
+
+  GET {{baseUrl}}/api/role-permissions/roles/{{roleId}}/permissions/{{permissionId}}/check
+  Authorization: Bearer {{accessToken}}
+
+--- Массовое назначение прав ---------------------------------------------------
+
+  POST {{baseUrl}}/api/role-permissions/roles/{{roleId}}/permissions/bulk-assign
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "permission_ids": [
+      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000002"
+    ]
+  }
+
+--- Массовое снятие прав -------------------------------------------------------
+
+  POST {{baseUrl}}/api/role-permissions/roles/{{roleId}}/permissions/bulk-remove
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+
+  {
+    "permission_ids": [
+      "00000000-0000-0000-0000-000000000001"
+    ]
+  }
+
+================================================================================
+  JSON-RPC (POST, без Bearer в коде; тело — JSON-RPC 2.0)
+================================================================================
+
+  POST {{baseUrl}}/api/rpc
+  Content-Type: application/json
+
+--- Метод: company.getHierarchy ------------------------------------------------
+
+  {
+    "jsonrpc": "2.0",
+    "method": "company.getHierarchy",
+    "params": {
+      "company_id": "{{companyId}}"
+    },
+    "id": 1
+  }
+
+--- Метод: user.getByRole ------------------------------------------------------
+
+  {
+    "jsonrpc": "2.0",
+    "method": "user.getByRole",
+    "params": {
+      "role_id": "{{roleId}}"
+    },
+    "id": 2
+  }
+
+--- Метод: role.getUsers -------------------------------------------------------
+
+  {
+    "jsonrpc": "2.0",
+    "method": "role.getUsers",
+    "params": {
+      "role_id": "{{roleId}}"
+    },
+    "id": 3
+  }
+
+--- Метод: permission.checkUserAccess ------------------------------------------
+
+  {
+    "jsonrpc": "2.0",
+    "method": "permission.checkUserAccess",
+    "params": {
+      "user_id": "{{userId}}",
+      "resource_type": "user",
+      "resource_id": "{{userId}}",
+      "action": "update"
+    },
+    "id": 4
+  }
+
+--- Негатив: неизвестный метод (ожидается JSON-RPC error) ---------------------
+
+  {
+    "jsonrpc": "2.0",
+    "method": "unknown.method",
+    "params": {},
+    "id": 99
+  }
+
+================================================================================
+  GraphQL / корень (справочно)
+================================================================================
+
+  POST {{baseUrl}}/query
+  (GraphQL-сервер в текущей сборке может быть не инициализирован — возможен 503)
+
+  GET {{baseUrl}}/
+  GET {{baseUrl}}/graphql
+  (playground может отвечать 503, если GraphQL не подключён)
+
+================================================================================
+  Примеры curl (Windows: используйте curl.exe из системы)
+================================================================================
+
+  curl.exe -s http://localhost:8080/health
+
+  curl.exe -s -X POST http://localhost:8080/api/auth/login ^
+    -H "Content-Type: application/json" ^
+    -d "{\"email\":\"testuser@example.com\",\"password\":\"SecurePass123\"}"
+
+  После получения TOKEN:
+
+  curl.exe -s http://localhost:8080/api/users/profile ^
+    -H "Authorization: Bearer TOKEN"
+
+  curl.exe -s -X POST http://localhost:8080/api/rpc ^
+    -H "Content-Type: application/json" ^
+    -d "{\"jsonrpc\":\"2.0\",\"method\":\"company.getHierarchy\",\"params\":{\"company_id\":\"ВАШ-UUID\"},\"id\":1}"
+
+================================================================================
+  Рекомендуемый порядок проверки в Postman
+================================================================================
+
+  1) GET  /health
+  2) POST /api/auth/register  (или сразу login, если пользователь уже есть)
+  3) Скопировать access_token и refresh_token в переменные окружения
+  4) GET  /api/users/profile с Bearer
+  5) POST /api/companies (публично) или работа с компаниями по ID из шагов выше
+  6) CRUD пользователей, ролей, role-permissions по необходимости
+  7) POST /api/rpc с методами из раздела JSON-RPC
+
+================================================================================
+  Файл создан для проекта Morent-Arch; лежит ВНЕ каталога user-system-develop.
+================================================================================

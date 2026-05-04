@@ -1,0 +1,65 @@
+scalar UUID
+scalar Time
+
+type User {
+    id: UUID!
+    email: String!
+    firstName: String
+    lastName: String
+    isActive: Boolean!
+    companyId: UUID!
+    phone: String
+    department: String
+    position: String
+    lastLogin: Time
+    createdAt: Time!
+    updatedAt: Time!
+
+    roles: [Role!]!
+    permissions: [Permission!]!
+}
+
+type Role {
+    id: UUID!
+    name: String!
+    description: String
+    isSystem: Boolean!
+    companyId: UUID!
+    permissions: [Permission!]!
+    users: [User!]!
+}
+
+type Permission {
+    id: UUID!
+    name: String!
+    description: String
+    roles: [Role!]!
+}
+
+type Query {
+    me: User!
+    user(id: UUID!): User
+    users(
+        limit: Int = 10,
+        offset: Int = 0,
+        companyId: UUID,
+        isActive: Boolean
+    ): UserList!
+    roles(companyId: UUID): [Role!]!
+    permissions: [Permission!]!
+}
+
+type UserList {
+    items: [User!]!
+    total: Int!
+}
+
+type Mutation {
+    login(email: String!, password: String!): AuthPayload!
+    logout: Boolean!
+}
+
+type AuthPayload {
+    token: String!
+    user: User!
+}

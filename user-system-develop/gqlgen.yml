@@ -1,0 +1,60 @@
+schema:
+  - app/graphql/schema/*.graphql
+
+exec:
+  filename: app/graphql/generated/generated.go
+  package: generated
+
+model:
+  filename: app/graphql/generated/models_gen.go
+  package: generated
+
+resolver:
+  layout: single-file
+  dir: app/graphql/resolvers
+  package: resolvers
+  filename: app/graphql/resolvers/resolver.go
+
+autobind:
+  - "user-system/app/models"
+
+models:
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+
+  Time:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+
+  User:
+    model: user-system/app/models.User
+    fields:
+      roles:
+        resolver: true
+      permissions:
+        resolver: true
+      companyId:
+        fieldName: CompanyID
+      lastLogin:
+        fieldName: LastLogin
+      createdAt:
+        fieldName: CreatedAt
+      updatedAt:
+        fieldName: UpdatedAt
+
+  Role:
+    model: user-system/app/models.Role
+    fields:
+      permissions:
+        resolver: true
+      users:
+        resolver: true
+      companyId:
+        fieldName: CompanyID
+
+  Permission:
+    model: user-system/app/models.Permission
+    fields:
+      roles:
+        resolver: true
