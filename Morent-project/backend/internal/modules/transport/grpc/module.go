@@ -14,10 +14,10 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container) {
 	var grpcSrv *grpcapi.Server
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			var err error
-			grpcSrv, err = grpcapi.Start(container.Config, container.RentalService)
-			if err != nil {
-				return err
+			var grpcStartErr error
+			grpcSrv, grpcStartErr = grpcapi.Start(container.Config, container.RentalService)
+			if grpcStartErr != nil {
+				return grpcStartErr
 			}
 			grpcPort := container.Config.GRPCPort
 			if grpcPort == "" {

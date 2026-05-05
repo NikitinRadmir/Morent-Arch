@@ -12,10 +12,18 @@ func WrapCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
 		allowedOrigin := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
+		backendPort := strings.TrimSpace(os.Getenv("HTTP_PORT"))
+		if backendPort == "" {
+			backendPort = strings.TrimSpace(os.Getenv("BACKEND_PORT"))
+		}
+		if backendPort == "" {
+			backendPort = "1488"
+		}
+		backendOrigin := "http://localhost:" + backendPort
 		if allowedOrigin == "" {
 			allowedOrigin = "http://localhost:5173"
 		}
-		if origin != "" && (origin == allowedOrigin || origin == "http://localhost:1488") {
+		if origin != "" && (origin == allowedOrigin || origin == backendOrigin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		} else {
 			w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
@@ -43,8 +51,8 @@ func WithAdmin(auth *service.AuthService, next http.HandlerFunc) http.HandlerFun
 			http.Error(w, "missing token", http.StatusUnauthorized)
 			return
 		}
-		user, err := auth.GetUserByToken(token)
-		if err != nil || user == nil || strings.ToLower(strings.TrimSpace(user.Role)) != "admin" {
+		user, getUserByTokenErr := auth.GetUserByToken(token)
+		if getUserByTokenErr != nil || user == nil || strings.ToLower(strings.TrimSpace(user.Role)) != "admin" {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -61,8 +69,8 @@ func extractTokenFromRequest(r *http.Request) string {
 	if cookieName == "" {
 		cookieName = "morent_session"
 	}
-	cookie, err := r.Cookie(cookieName)
-	if err == nil && cookie != nil {
+	cookie, cookieErr := r.Cookie(cookieName)
+	if cookieErr == nil && cookie != nil {
 		return strings.TrimSpace(cookie.Value)
 	}
 	return ""

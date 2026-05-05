@@ -1,0 +1,14 @@
+services:
+  db:
+    restart: unless-stopped
+  minio:
+    restart: unless-stopped
+  backend:
+    restart: unless-stopped
+    environment:
+      # В проде подставляй публичный URL (обычно это внешний домен/порт),
+      # чтобы ссылки на медиа корректно работали вне контейнеров.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
+  frontend:
+    restart: unless-stopped
+

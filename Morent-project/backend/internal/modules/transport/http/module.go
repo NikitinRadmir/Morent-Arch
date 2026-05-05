@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -45,8 +47,16 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.
 		w.Write([]byte(`{"error":"Not Found","message":"The requested resource was not found"}`))
 	}))
 
+	httpPort := strings.TrimSpace(os.Getenv("HTTP_PORT"))
+	if httpPort == "" {
+		httpPort = strings.TrimSpace(os.Getenv("BACKEND_PORT"))
+	}
+	if httpPort == "" {
+		httpPort = "1488"
+	}
+
 	httpSrv := &http.Server{
-		Addr:              ":1488",
+		Addr:              ":" + httpPort,
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -71,9 +81,9 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.
 
 			go func() {
 				fmt.Printf("HTTP сервер запущен на порту %s\n", httpSrv.Addr)
-				fmt.Print("http://localhost:1488/")
-				if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					log.Error("Ошибка запуска HTTP сервера:", err)
+				fmt.Print("http://localhost:" + httpPort + "/")
+				if listenErr := httpSrv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
+					log.Error("Ошибка запуска HTTP сервера:", listenErr)
 				}
 			}()
 			return nil

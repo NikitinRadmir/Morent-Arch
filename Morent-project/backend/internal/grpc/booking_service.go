@@ -34,17 +34,17 @@ func (s *BookingServiceServer) CreateBooking(ctx context.Context, in *bookingpb.
 	start := in.StartDate.AsTime()
 	end := in.EndDate.AsTime()
 
-	r, err := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end, in.TotalPrice)
-	if err != nil {
-		switch err {
+	r, createBookingErr := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end, in.TotalPrice)
+	if createBookingErr != nil {
+		switch createBookingErr {
 		case service.ErrCarNotFound:
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, createBookingErr.Error())
 		case service.ErrInvalidRentalPeriod:
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			return nil, status.Error(codes.InvalidArgument, createBookingErr.Error())
 		case service.ErrCarAlreadyBooked:
-			return nil, status.Error(codes.FailedPrecondition, err.Error())
+			return nil, status.Error(codes.FailedPrecondition, createBookingErr.Error())
 		default:
-			return nil, status.Error(codes.Internal, err.Error())
+			return nil, status.Error(codes.Internal, createBookingErr.Error())
 		}
 	}
 
@@ -66,9 +66,9 @@ func (s *BookingServiceServer) GetBookingById(ctx context.Context, in *bookingpb
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	r, err := s.rentals.GetRentalByID(uint(in.Id))
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	r, getBookingErr := s.rentals.GetRentalByID(uint(in.Id))
+	if getBookingErr != nil {
+		return nil, status.Error(codes.Internal, getBookingErr.Error())
 	}
 	if r == nil {
 		return nil, status.Error(codes.NotFound, "booking not found")
@@ -92,9 +92,9 @@ func (s *BookingServiceServer) ListCarBookings(ctx context.Context, in *bookingp
 		return nil, status.Error(codes.InvalidArgument, "car_id is required")
 	}
 
-	bookings, err := s.rentals.ListCarBookings(uint(in.CarId))
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	bookings, listBookingsErr := s.rentals.ListCarBookings(uint(in.CarId))
+	if listBookingsErr != nil {
+		return nil, status.Error(codes.Internal, listBookingsErr.Error())
 	}
 
 	out := make([]*bookingpb.DateRange, 0, len(bookings))
@@ -113,12 +113,12 @@ func (s *BookingServiceServer) CancelBooking(ctx context.Context, in *bookingpb.
 		return nil, status.Error(codes.InvalidArgument, "id and user_id are required")
 	}
 
-	cancelled, err := s.rentals.CancelRental(uint(in.Id), uint(in.UserId))
-	if err != nil {
-		if err == service.ErrForbidden {
-			return nil, status.Error(codes.PermissionDenied, err.Error())
+	cancelled, cancelBookingErr := s.rentals.CancelRental(uint(in.Id), uint(in.UserId))
+	if cancelBookingErr != nil {
+		if cancelBookingErr == service.ErrForbidden {
+			return nil, status.Error(codes.PermissionDenied, cancelBookingErr.Error())
 		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, cancelBookingErr.Error())
 	}
 	if !cancelled {
 		return nil, status.Error(codes.NotFound, "booking not found")

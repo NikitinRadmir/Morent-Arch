@@ -24,7 +24,7 @@ func RunMigrations(db *gorm.DB) error {
 	// Создание стокового админа
 	adminEmail := "admin@morent.com"
 	var existingAdmin models.User
-	if err := db.Where("email = ?", adminEmail).First(&existingAdmin).Error; err != nil {
+	if adminLookupErr := db.Where("email = ?", adminEmail).First(&existingAdmin).Error; adminLookupErr != nil {
 		// Админ не существует, создаем
 		hash, errHash := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 		if errHash != nil {

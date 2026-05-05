@@ -31,9 +31,9 @@ func NewFavoriteService(favRepo FavoriteRepository, carRepo FavoriteCarRepositor
 }
 
 func (s *FavoriteService) List(userID uint) ([]models.Car, error) {
-	favs, err := s.favoriteRepo.ListByUser(userID)
-	if err != nil {
-		return nil, err
+	favs, listFavoritesErr := s.favoriteRepo.ListByUser(userID)
+	if listFavoritesErr != nil {
+		return nil, listFavoritesErr
 	}
 	cars := make([]models.Car, 0, len(favs))
 	for _, fav := range favs {
@@ -45,9 +45,9 @@ func (s *FavoriteService) List(userID uint) ([]models.Car, error) {
 }
 
 func (s *FavoriteService) Add(userID, carID uint) error {
-	car, err := s.carRepo.GetByID(int(carID))
-	if err != nil {
-		return err
+	car, getCarByIDErr := s.carRepo.GetByID(int(carID))
+	if getCarByIDErr != nil {
+		return getCarByIDErr
 	}
 	if car == nil {
 		return ErrCarNotFound

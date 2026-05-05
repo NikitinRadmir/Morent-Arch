@@ -17,20 +17,20 @@ func NewFavoriteRepository(db *gorm.DB) *FavoriteRepository {
 
 func (r *FavoriteRepository) ListAll() ([]models.Favorite, error) {
 	var favorites []models.Favorite
-	err := r.db.Preload("Car").Find(&favorites).Error
-	return favorites, err
+	findFavoritesErr := r.db.Preload("Car").Find(&favorites).Error
+	return favorites, findFavoritesErr
 }
 
 func (r *FavoriteRepository) ListByUser(userID uint) ([]models.Favorite, error) {
 	var favorites []models.Favorite
-	err := r.db.Preload("Car").Where("user_id = ?", userID).Find(&favorites).Error
-	return favorites, err
+	findFavoritesErr := r.db.Preload("Car").Where("user_id = ?", userID).Find(&favorites).Error
+	return favorites, findFavoritesErr
 }
 
 func (r *FavoriteRepository) Exists(userID, carID uint) (bool, error) {
 	var count int64
-	err := r.db.Model(&models.Favorite{}).Where("user_id = ? AND car_id = ?", userID, carID).Count(&count).Error
-	return count > 0, err
+	existsCountErr := r.db.Model(&models.Favorite{}).Where("user_id = ? AND car_id = ?", userID, carID).Count(&count).Error
+	return count > 0, existsCountErr
 }
 
 func (r *FavoriteRepository) Create(userID, carID uint) error {

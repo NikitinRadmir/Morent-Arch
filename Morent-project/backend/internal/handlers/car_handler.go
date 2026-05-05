@@ -105,13 +105,13 @@ func (h *CarHandler) GetFiltered(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	if capacityStr := queryParams.Get("capacity"); capacityStr != "" {
-		if cap, err := strconv.Atoi(capacityStr); err == nil {
+		if cap, capacityParseErr := strconv.Atoi(capacityStr); capacityParseErr == nil {
 			query.Capacity = &cap
 		}
 	}
 	
 	if priceUnderStr := queryParams.Get("priceUnder"); priceUnderStr != "" {
-		if price, err := strconv.ParseFloat(priceUnderStr, 64); err == nil {
+		if price, priceParseErr := strconv.ParseFloat(priceUnderStr, 64); priceParseErr == nil {
 			query.PriceUnder = &price
 		}
 	}

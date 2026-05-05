@@ -24,12 +24,12 @@ func (r *SessionRepository) Create(userID uint, token string) error {
 
 func (r *SessionRepository) GetByToken(token string) (*models.Session, error) {
 	var session models.Session
-	err := r.db.Preload("User").Where("token = ?", token).First(&session).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+	getSessionErr := r.db.Preload("User").Where("token = ?", token).First(&session).Error
+	if getSessionErr != nil {
+		if getSessionErr == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, getSessionErr
 	}
 	return &session, nil
 }

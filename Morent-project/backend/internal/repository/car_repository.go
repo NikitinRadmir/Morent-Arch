@@ -16,18 +16,18 @@ func NewCarRepository(db *gorm.DB) *CarRepository {
 
 func (r *CarRepository) GetAll() ([]models.Car, error) {
 	var cars []models.Car
-	err := r.db.Find(&cars).Error
-	return cars, err
+	findCarsErr := r.db.Find(&cars).Error
+	return cars, findCarsErr
 }
 
 func (r *CarRepository) GetByID(id int) (*models.Car, error) {
 	var car models.Car
-	err := r.db.First(&car, id).Error
-	if err == gorm.ErrRecordNotFound {
+	getCarErr := r.db.First(&car, id).Error
+	if getCarErr == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
+	if getCarErr != nil {
+		return nil, getCarErr
 	}
 	return &car, nil
 }
@@ -49,8 +49,8 @@ func (r *CarRepository) GetFiltered(name, carType string, capacity *int, priceUn
 		query = query.Where("price <= ?", *priceUnder)
 	}
 
-	err := query.Find(&cars).Error
-	return cars, err
+	findFilteredCarsErr := query.Find(&cars).Error
+	return cars, findFilteredCarsErr
 }
 
 func (r *CarRepository) CreateCar(car *models.Car) error {

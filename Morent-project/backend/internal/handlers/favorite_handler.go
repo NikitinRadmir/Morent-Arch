@@ -28,9 +28,9 @@ func NewFavoriteHandler(authService *service.AuthService, favoriteService *servi
 }
 
 func (h *FavoriteHandler) List(w http.ResponseWriter, r *http.Request) {
-	user, err := h.authenticate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	user, authErr := h.authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 	ctx := r.Context()
@@ -59,9 +59,9 @@ func (h *FavoriteHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *FavoriteHandler) Add(w http.ResponseWriter, r *http.Request) {
-	user, err := h.authenticate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	user, authErr := h.authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 	ctx := r.Context()
@@ -106,9 +106,9 @@ func (h *FavoriteHandler) Add(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *FavoriteHandler) Remove(w http.ResponseWriter, r *http.Request) {
-	user, err := h.authenticate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	user, authErr := h.authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 	ctx := r.Context()
@@ -156,8 +156,8 @@ func (h *FavoriteHandler) authenticate(r *http.Request) (*models.User, error) {
 		if cookieName == "" {
 			cookieName = "morent_session"
 		}
-		cookie, err := r.Cookie(cookieName)
-		if err == nil && cookie != nil {
+		cookie, cookieErr := r.Cookie(cookieName)
+		if cookieErr == nil && cookie != nil {
 			token = strings.TrimSpace(cookie.Value)
 		}
 	}
@@ -168,9 +168,9 @@ func (h *FavoriteHandler) authenticate(r *http.Request) (*models.User, error) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.authService.GetUserByToken(token)
-	if err != nil {
-		return nil, err
+	user, getUserByTokenErr := h.authService.GetUserByToken(token)
+	if getUserByTokenErr != nil {
+		return nil, getUserByTokenErr
 	}
 	return user, nil
 }

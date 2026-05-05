@@ -23,9 +23,9 @@ func Start(cfg *config.Config, rentalService *service.RentalService) (*Server, e
 	}
 	addr := fmt.Sprintf(":%s", port)
 
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
+	lis, listenErr := net.Listen("tcp", addr)
+	if listenErr != nil {
+		return nil, listenErr
 	}
 
 	s := grpc.NewServer()

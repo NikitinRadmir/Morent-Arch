@@ -46,17 +46,17 @@ func (s *AuthService) Register(name, email, password string) (*models.UserRespon
 	}
 
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	existing, err := s.userRepo.GetByEmail(normalizedEmail)
-	if err != nil {
-		return nil, "", err
+	existing, getByEmailErr := s.userRepo.GetByEmail(normalizedEmail)
+	if getByEmailErr != nil {
+		return nil, "", getByEmailErr
 	}
 	if existing != nil {
 		return nil, "", ErrUserExists
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, "", err
+	hash, passwordHashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if passwordHashErr != nil {
+		return nil, "", passwordHashErr
 	}
 
 	user := models.User{
@@ -87,9 +87,9 @@ func (s *AuthService) Login(email, password string) (*models.UserResponse, strin
 	}
 
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	user, err := s.userRepo.GetByEmail(normalizedEmail)
-	if err != nil {
-		return nil, "", err
+	user, getByEmailErr := s.userRepo.GetByEmail(normalizedEmail)
+	if getByEmailErr != nil {
+		return nil, "", getByEmailErr
 	}
 	if user == nil {
 		return nil, "", ErrInvalidCredentials
@@ -109,8 +109,8 @@ func (s *AuthService) Login(email, password string) (*models.UserResponse, strin
 
 func (s *AuthService) createSession(userID uint) (string, error) {
 	token := uuid.NewString()
-	if err := s.sessionRepo.Create(userID, token); err != nil {
-		return "", err
+	if createSessionErr := s.sessionRepo.Create(userID, token); createSessionErr != nil {
+		return "", createSessionErr
 	}
 	return token, nil
 }
@@ -119,9 +119,9 @@ func (s *AuthService) GetUserByToken(token string) (*models.User, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, ErrInvalidToken
 	}
-	session, err := s.sessionRepo.GetByToken(token)
-	if err != nil {
-		return nil, err
+	session, getSessionErr := s.sessionRepo.GetByToken(token)
+	if getSessionErr != nil {
+		return nil, getSessionErr
 	}
 	if session == nil {
 		return nil, ErrInvalidToken
@@ -137,9 +137,9 @@ func (s *AuthService) Logout(token string) error {
 }
 
 func (s *AuthService) UpdateProfile(userID uint, name, nickname, position, avatarURL *string) (*models.UserResponse, error) {
-	user, err := s.userRepo.GetByID(userID)
-	if err != nil {
-		return nil, err
+	user, getUserByIDErr := s.userRepo.GetByID(userID)
+	if getUserByIDErr != nil {
+		return nil, getUserByIDErr
 	}
 	if user == nil {
 		return nil, ErrInvalidToken
@@ -169,9 +169,9 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 	if strings.TrimSpace(newPassword) == "" {
 		return errors.New("new password is required")
 	}
-	user, err := s.userRepo.GetByID(userID)
-	if err != nil {
-		return err
+	user, getUserByIDErr := s.userRepo.GetByID(userID)
+	if getUserByIDErr != nil {
+		return getUserByIDErr
 	}
 	if user == nil {
 		return ErrInvalidToken

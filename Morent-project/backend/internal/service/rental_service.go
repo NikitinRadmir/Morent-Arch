@@ -37,9 +37,9 @@ var ErrCarAlreadyBooked = errors.New("car already booked for selected period")
 var ErrForbidden = errors.New("forbidden")
 
 func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time.Time, totalPrice float64) (*models.RentalResponse, error) {
-	car, err := s.carRepo.GetByID(int(carID))
-	if err != nil {
-		return nil, err
+	car, getCarByIDErr := s.carRepo.GetByID(int(carID))
+	if getCarByIDErr != nil {
+		return nil, getCarByIDErr
 	}
 	if car == nil {
 		return nil, ErrCarNotFound
@@ -75,9 +75,9 @@ func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time
 }
 
 func (s *RentalService) ListRentals(userID uint) ([]models.RentalResponse, error) {
-	rentals, err := s.rentalRepo.ListByUser(userID)
-	if err != nil {
-		return nil, err
+	rentals, listRentalsErr := s.rentalRepo.ListByUser(userID)
+	if listRentalsErr != nil {
+		return nil, listRentalsErr
 	}
 
 	responses := make([]models.RentalResponse, 0, len(rentals))
@@ -96,9 +96,9 @@ func (s *RentalService) GetRentalByID(id uint) (*models.Rental, error) {
 }
 
 func (s *RentalService) CancelRental(id, userID uint) (bool, error) {
-	rental, err := s.GetRentalByID(id)
-	if err != nil {
-		return false, err
+	rental, getRentalErr := s.GetRentalByID(id)
+	if getRentalErr != nil {
+		return false, getRentalErr
 	}
 	if rental == nil {
 		return false, nil

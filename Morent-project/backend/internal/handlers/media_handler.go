@@ -35,13 +35,13 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	const maxSize = 20 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 
-	if err := r.ParseMultipartForm(maxSize); err != nil {
-		http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
+	if parseMultipartFormErr := r.ParseMultipartForm(maxSize); parseMultipartFormErr != nil {
+		http.Error(w, "invalid multipart form: "+parseMultipartFormErr.Error(), http.StatusBadRequest)
 		return
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
+	file, header, formFileErr := r.FormFile("file")
+	if formFileErr != nil {
 		http.Error(w, "file field is required", http.StatusBadRequest)
 		return
 	}
@@ -54,9 +54,9 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	var reader io.Reader = file
 	var size int64 = header.Size
 	if size <= 0 {
-		data, err := io.ReadAll(file)
-		if err != nil {
-			http.Error(w, "failed to read file: "+err.Error(), http.StatusInternalServerError)
+		data, readFileErr := io.ReadAll(file)
+		if readFileErr != nil {
+			http.Error(w, "failed to read file: "+readFileErr.Error(), http.StatusInternalServerError)
 			return
 		}
 		size = int64(len(data))
@@ -66,9 +66,9 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	url, err := h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, name, reader, size, header.Header.Get("Content-Type"))
-	if err != nil {
-		http.Error(w, "upload failed: "+err.Error(), http.StatusInternalServerError)
+	url, uploadErr := h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, name, reader, size, header.Header.Get("Content-Type"))
+	if uploadErr != nil {
+		http.Error(w, "upload failed: "+uploadErr.Error(), http.StatusInternalServerError)
 		return
 	}
 

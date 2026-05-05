@@ -79,8 +79,8 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.authService.GetUserByToken(token)
-	if err != nil || user == nil {
+	user, getUserByTokenErr := h.authService.GetUserByToken(token)
+	if getUserByTokenErr != nil || user == nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -90,8 +90,8 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body: "+errDecode.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := commentValidator.Struct(payload); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+	if validationErr := commentValidator.Struct(payload); validationErr != nil {
+		http.Error(w, "validation error: "+validationErr.Error(), http.StatusBadRequest)
 		return
 	}
 

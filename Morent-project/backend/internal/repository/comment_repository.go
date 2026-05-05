@@ -15,8 +15,8 @@ func NewCommentRepository(db *gorm.DB) *CommentRepository {
 
 func (r *CommentRepository) ListAll() ([]models.Comment, error) {
 	var comments []models.Comment
-	err := r.db.Order("created_at DESC").Find(&comments).Error
-	return comments, err
+	findCommentsErr := r.db.Order("created_at DESC").Find(&comments).Error
+	return comments, findCommentsErr
 }
 
 func (r *CommentRepository) GetByCarID(carID int) ([]models.Comment, error) {

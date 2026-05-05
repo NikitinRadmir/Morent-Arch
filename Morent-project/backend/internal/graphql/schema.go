@@ -68,9 +68,9 @@ func NewSchema(c *di.Container) (graphql.Schema, error) {
 						return nil, nil
 					}
 					// id уже парсится в CarService как int
-					car, err := c.CarService.GetByIDString(idVal)
-					if err != nil {
-						return nil, err
+					car, getCarErr := c.CarService.GetByIDString(idVal)
+					if getCarErr != nil {
+						return nil, getCarErr
 					}
 					if car == nil {
 						return nil, nil
@@ -103,9 +103,9 @@ func NewSchema(c *di.Container) (graphql.Schema, error) {
 					if carID <= 0 {
 						return []map[string]string{}, nil
 					}
-					bookings, err := c.RentalService.ListCarBookings(uint(carID))
-					if err != nil {
-						return nil, err
+					bookings, listBookingsErr := c.RentalService.ListCarBookings(uint(carID))
+					if listBookingsErr != nil {
+						return nil, listBookingsErr
 					}
 					result := make([]map[string]string, 0, len(bookings))
 					for _, b := range bookings {

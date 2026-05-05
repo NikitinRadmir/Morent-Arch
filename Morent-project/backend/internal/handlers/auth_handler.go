@@ -31,8 +31,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+	if validationErr := authValidator.Struct(req); validationErr != nil {
+		http.Error(w, "validation error: "+validationErr.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -79,8 +79,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+	if validationErr := authValidator.Struct(req); validationErr != nil {
+		http.Error(w, "validation error: "+validationErr.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -131,13 +131,13 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		token = strings.TrimSpace(token[7:])
 	}
 
-	if err := h.service.Logout(token); err != nil {
+	if logoutErr := h.service.Logout(token); logoutErr != nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
 			Type:    service.LogAuth,
 			Action:  "logout",
 			Result:  "error",
-			Message: err.Error(),
+			Message: logoutErr.Error(),
 		})
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
@@ -172,8 +172,8 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.service.GetUserByToken(token)
-	if err != nil || user == nil {
+	user, getUserByTokenErr := h.service.GetUserByToken(token)
+	if getUserByTokenErr != nil || user == nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
 			Type:    service.LogAuth,
@@ -215,8 +215,8 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.service.GetUserByToken(token)
-	if err != nil || user == nil {
+	user, getUserByTokenErr := h.service.GetUserByToken(token)
+	if getUserByTokenErr != nil || user == nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
 			Type:    service.LogProfile,
@@ -277,8 +277,8 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.service.GetUserByToken(token)
-	if err != nil || user == nil {
+	user, getUserByTokenErr := h.service.GetUserByToken(token)
+	if getUserByTokenErr != nil || user == nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
 			Type:    service.LogProfile,
@@ -367,8 +367,8 @@ func (h *AuthHandler) extractToken(r *http.Request) string {
 		if cookieName == "" {
 			cookieName = "morent_session"
 		}
-		cookie, err := r.Cookie(cookieName)
-		if err == nil && cookie != nil {
+	cookie, cookieErr := r.Cookie(cookieName)
+	if cookieErr == nil && cookie != nil {
 			token = strings.TrimSpace(cookie.Value)
 		}
 	}

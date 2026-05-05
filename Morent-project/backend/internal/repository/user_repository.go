@@ -16,8 +16,8 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 
 func (r *UserRepository) ListAll() ([]models.User, error) {
 	var users []models.User
-	if err := r.db.Find(&users).Error; err != nil {
-		return nil, err
+	if findUsersErr := r.db.Find(&users).Error; findUsersErr != nil {
+		return nil, findUsersErr
 	}
 	return users, nil
 }
@@ -28,24 +28,24 @@ func (r *UserRepository) Create(user *models.User) error {
 
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Where("email = ?", email).First(&user).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+	getByEmailErr := r.db.Where("email = ?", email).First(&user).Error
+	if getByEmailErr != nil {
+		if getByEmailErr == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, getByEmailErr
 	}
 	return &user, nil
 }
 
 func (r *UserRepository) GetByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.First(&user, id).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+	getByIDErr := r.db.First(&user, id).Error
+	if getByIDErr != nil {
+		if getByIDErr == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, getByIDErr
 	}
 	return &user, nil
 }

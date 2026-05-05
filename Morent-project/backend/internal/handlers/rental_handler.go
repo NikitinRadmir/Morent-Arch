@@ -30,9 +30,9 @@ func NewRentalHandler(authService *service.AuthService, rentalService *service.R
 }
 
 func (h *RentalHandler) List(w http.ResponseWriter, r *http.Request) {
-	user, err := h.authenticate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	user, authErr := h.authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 	ctx := r.Context()
@@ -61,9 +61,9 @@ func (h *RentalHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
-	user, err := h.authenticate(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	user, authErr := h.authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 	ctx := r.Context()
@@ -73,8 +73,8 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := rentalValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+	if validationErr := rentalValidator.Struct(req); validationErr != nil {
+		http.Error(w, "validation error: "+validationErr.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -129,8 +129,8 @@ func (h *RentalHandler) BookedDates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	idStr := parts[len(parts)-1]
-	carID64, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
+	carID64, carIDParseErr := strconv.ParseUint(idStr, 10, 64)
+	if carIDParseErr != nil {
 		http.Error(w, "invalid car id", http.StatusBadRequest)
 		return
 	}
@@ -161,9 +161,9 @@ func (h *RentalHandler) authenticate(r *http.Request) (*models.User, error) {
 	if strings.HasPrefix(lower, "bearer ") {
 		token = strings.TrimSpace(token[7:])
 	}
-	user, err := h.authService.GetUserByToken(token)
-	if err != nil {
-		return nil, err
+	user, getUserByTokenErr := h.authService.GetUserByToken(token)
+	if getUserByTokenErr != nil {
+		return nil, getUserByTokenErr
 	}
 	return user, nil
 }

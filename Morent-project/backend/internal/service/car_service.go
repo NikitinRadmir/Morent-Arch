@@ -34,9 +34,9 @@ func (s *CarService) GetByID(id int) (*models.Car, error) {
 
 // GetByIDString удобен для GraphQL-слоя, где id приходит строкой.
 func (s *CarService) GetByIDString(idStr string) (*models.Car, error) {
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil, err
+	id, parseIDErr := strconv.Atoi(idStr)
+	if parseIDErr != nil {
+		return nil, parseIDErr
 	}
 	return s.GetByID(id)
 }

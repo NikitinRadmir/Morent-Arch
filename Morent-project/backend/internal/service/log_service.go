@@ -42,9 +42,9 @@ type LogEvent struct {
 }
 
 func (s *LogService) LogEvent(ctx context.Context, event LogEvent) error {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return err
+	payload, marshalPayloadErr := json.Marshal(event)
+	if marshalPayloadErr != nil {
+		return marshalPayloadErr
 	}
 	return s.storage.AppendDailyLog(ctx, string(payload))
 }
@@ -53,15 +53,15 @@ func (s *LogService) LogEvent(ctx context.Context, event LogEvent) error {
 // Используется для отображения истории изменений в админке.
 func (s *LogService) GetDailyEvents(ctx context.Context, day time.Time) ([]LogEvent, error) {
 	objectName := fmt.Sprintf("logs/%s.log", day.Format("2006-01-02"))
-	obj, err := s.storage.Client.GetObject(ctx, s.storage.Bucket, objectName, minio.GetObjectOptions{})
-	if err != nil {
-		return nil, err
+	obj, getObjectErr := s.storage.Client.GetObject(ctx, s.storage.Bucket, objectName, minio.GetObjectOptions{})
+	if getObjectErr != nil {
+		return nil, getObjectErr
 	}
 	defer obj.Close()
 
-	data, err := io.ReadAll(obj)
-	if err != nil {
-		return nil, err
+	data, readAllErr := io.ReadAll(obj)
+	if readAllErr != nil {
+		return nil, readAllErr
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -78,7 +78,7 @@ func (s *LogService) GetDailyEvents(ctx context.Context, day time.Time) ([]LogEv
 		}
 		jsonPart := line[idx:]
 		var ev LogEvent
-		if err := json.Unmarshal([]byte(jsonPart), &ev); err != nil {
+		if unmarshalErr := json.Unmarshal([]byte(jsonPart), &ev); unmarshalErr != nil {
 			continue
 		}
 		events = append(events, ev)

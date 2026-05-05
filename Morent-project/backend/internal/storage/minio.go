@@ -19,22 +19,22 @@ type MinioStorage struct {
 }
 
 func NewMinioStorage(cfg *config.Config) (*MinioStorage, error) {
-	client, err := minio.New(cfg.MinioEndpoint, &minio.Options{
+	client, initErr := minio.New(cfg.MinioEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
 		Secure: cfg.MinioUseSSL,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("minio init failed: %w", err)
+	if initErr != nil {
+		return nil, fmt.Errorf("minio init failed: %w", initErr)
 	}
 
 	ctx := context.Background()
-	exists, err := client.BucketExists(ctx, cfg.MinioBucket)
-	if err != nil {
-		return nil, fmt.Errorf("minio check bucket: %w", err)
+	exists, bucketExistsErr := client.BucketExists(ctx, cfg.MinioBucket)
+	if bucketExistsErr != nil {
+		return nil, fmt.Errorf("minio check bucket: %w", bucketExistsErr)
 	}
 	if !exists {
-		if err := client.MakeBucket(ctx, cfg.MinioBucket, minio.MakeBucketOptions{}); err != nil {
-			return nil, fmt.Errorf("minio create bucket: %w", err)
+		if createBucketErr := client.MakeBucket(ctx, cfg.MinioBucket, minio.MakeBucketOptions{}); createBucketErr != nil {
+			return nil, fmt.Errorf("minio create bucket: %w", createBucketErr)
 		}
 	}
 
@@ -59,8 +59,8 @@ func NewMinioStorage(cfg *config.Config) (*MinioStorage, error) {
 
 func (s *MinioStorage) Upload(ctx context.Context, endpoint string, useSSL bool, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 	opts := minio.PutObjectOptions{ContentType: contentType}
-	if _, err := s.Client.PutObject(ctx, s.Bucket, objectName, reader, size, opts); err != nil {
-		return "", fmt.Errorf("minio put object: %w", err)
+	if _, putObjectErr := s.Client.PutObject(ctx, s.Bucket, objectName, reader, size, opts); putObjectErr != nil {
+		return "", fmt.Errorf("minio put object: %w", putObjectErr)
 	}
 	scheme := "http"
 	if useSSL {
@@ -79,8 +79,8 @@ func (s *MinioStorage) AppendDailyLog(ctx context.Context, message string) error
 
 	// Try to read existing content (if any).
 	var existing []byte
-	obj, err := s.Client.GetObject(ctx, s.Bucket, objectName, minio.GetObjectOptions{})
-	if err == nil {
+	obj, getObjectErr := s.Client.GetObject(ctx, s.Bucket, objectName, minio.GetObjectOptions{})
+	if getObjectErr == nil {
 		existing, _ = io.ReadAll(obj) // ignore read errors, treat as empty
 		_ = obj.Close()
 	}
@@ -88,8 +88,8 @@ func (s *MinioStorage) AppendDailyLog(ctx context.Context, message string) error
 	newContent := append(existing, []byte(line)...)
 	reader := bytes.NewReader(newContent)
 
-	if _, errPut := s.Client.PutObject(ctx, s.Bucket, objectName, reader, int64(len(newContent)), minio.PutObjectOptions{ContentType: "text/plain"}); errPut != nil {
-		return fmt.Errorf("minio append log: %w", errPut)
+	if _, putLogErr := s.Client.PutObject(ctx, s.Bucket, objectName, reader, int64(len(newContent)), minio.PutObjectOptions{ContentType: "text/plain"}); putLogErr != nil {
+		return fmt.Errorf("minio append log: %w", putLogErr)
 	}
 	return nil
 }

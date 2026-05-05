@@ -69,8 +69,8 @@ func getEnvBool(key string, fallback bool) bool {
 	if value == "" {
 		return fallback
 	}
-	parsed, err := strconv.ParseBool(value)
-	if err != nil {
+	parsed, parseBoolErr := strconv.ParseBool(value)
+	if parseBoolErr != nil {
 		return fallback
 	}
 	return parsed
@@ -81,8 +81,8 @@ func getEnvInt(key string, fallback int) int {
 	if value == "" {
 		return fallback
 	}
-	parsed, err := strconv.Atoi(value)
-	if err != nil {
+	parsed, parseIntErr := strconv.Atoi(value)
+	if parseIntErr != nil {
 		return fallback
 	}
 	return parsed
