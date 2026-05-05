@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailService.Api", "EmailService.Api.csproj", "{DF4604B3-2970-44CA-AECA-B58290C8415D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailService.Core", "..\EmailService.Core\EmailService.Core.csproj", "{CD6FA255-1C30-4032-BD5D-AF84388FDB72}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{41556D37-48D2-4041-AF12-265D573C6C5A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailService.Infrastructure", "..\EmailService.Infrastructure\EmailService.Infrastructure.csproj", "{378CF493-D17F-418E-9192-95C7C150F2F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailService.Worker", "..\EmailService.Worker\EmailService.Worker.csproj", "{E6FECB06-C111-4210-84B4-6E73CE82701F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3AF41C9B-F856-4E80-90E0-AD1BA1D4B19F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EmailService.Templates", "EmailService.Templates", "{5ED844B2-CC4E-4315-B91D-5C341A8FAEBF}"
+	ProjectSection(SolutionItems) = preProject
+		templates.json = templates.json
+		📄 booking_confirmation.html = 📄 booking_confirmation.html
+		📄 payment_failed.html = 📄 payment_failed.html
+		📄 reminder_24h.html = 📄 reminder_24h.html
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DF4604B3-2970-44CA-AECA-B58290C8415D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF4604B3-2970-44CA-AECA-B58290C8415D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF4604B3-2970-44CA-AECA-B58290C8415D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF4604B3-2970-44CA-AECA-B58290C8415D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD6FA255-1C30-4032-BD5D-AF84388FDB72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD6FA255-1C30-4032-BD5D-AF84388FDB72}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD6FA255-1C30-4032-BD5D-AF84388FDB72}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD6FA255-1C30-4032-BD5D-AF84388FDB72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{378CF493-D17F-418E-9192-95C7C150F2F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{378CF493-D17F-418E-9192-95C7C150F2F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{378CF493-D17F-418E-9192-95C7C150F2F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{378CF493-D17F-418E-9192-95C7C150F2F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6FECB06-C111-4210-84B4-6E73CE82701F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6FECB06-C111-4210-84B4-6E73CE82701F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6FECB06-C111-4210-84B4-6E73CE82701F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6FECB06-C111-4210-84B4-6E73CE82701F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DF4604B3-2970-44CA-AECA-B58290C8415D} = {41556D37-48D2-4041-AF12-265D573C6C5A}
+		{CD6FA255-1C30-4032-BD5D-AF84388FDB72} = {41556D37-48D2-4041-AF12-265D573C6C5A}
+		{378CF493-D17F-418E-9192-95C7C150F2F7} = {41556D37-48D2-4041-AF12-265D573C6C5A}
+		{E6FECB06-C111-4210-84B4-6E73CE82701F} = {41556D37-48D2-4041-AF12-265D573C6C5A}
+		{5ED844B2-CC4E-4315-B91D-5C341A8FAEBF} = {41556D37-48D2-4041-AF12-265D573C6C5A}
+	EndGlobalSection
+EndGlobal
