@@ -1,0 +1,14 @@
+services:
+  payment-service:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      HTTP_ADDR: ${HTTP_ADDR:-:8081}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
