@@ -1,0 +1,281 @@
+openapi: 3.0.0
+info:
+  title: Companies Management API
+  description: API для управления компаниями
+  version: 1.0.0
+
+paths:
+  /api/v1/companies:
+    get:
+      tags:
+        - Companies
+      summary: Получение списка компаний
+      description: Получение всех компаний в системе
+      operationId: getAllCompanies
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список компаний
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+          examples:
+            success:
+              value:
+                message: "companies retrieved successfully"
+                data:
+                  - id: "123e4567-e89b-12d3-a456-426614174001"
+                    name: "ООО Рога и Копыта"
+                    description: "IT компания"
+                    domain: "example.com"
+                    is_active: true
+                    created_at: "2024-01-01T00:00:00Z"
+                    updated_at: "2024-01-01T00:00:00Z"
+        '401':
+          description: Неавторизованный доступ
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      tags:
+        - Companies
+      summary: Создание компании
+      description: Создание новой компании (требуются права администратора)
+      operationId: createCompany
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompanyRequest'
+            example:
+              name: "Новая Компания  **ДОЛЖЕН БЫТЬ УНИКАЛЬНЫМ** в системе"
+              description: "Описание новой компании"
+              domain: "newcompany.com  **ДОЛЖЕН БЫТЬ УНИКАЛЬНЫМ** в системе"
+      responses:
+        '201':
+          description: Компания успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '409':
+          description: Компания с таким именем уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/companies/{id}:
+    get:
+      tags:
+        - Companies
+      summary: Получение компании по ID
+      description: Получение информации о конкретной компании
+      operationId: getCompanyById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID компании
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Компания не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      tags:
+        - Companies
+      summary: Обновление компании
+      description: Обновление информации о компании
+      operationId: updateCompany
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID компании
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyRequest'
+            example:
+              name: "Обновленное название"
+              description: "Обновленное описание"
+              domain: "updated.com"
+              is_active: true
+      responses:
+        '200':
+          description: Компания успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Компания не найдена
+        '409':
+          description: Компания с таким именем уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      tags:
+        - Companies
+      summary: Удаление компании
+      description: Удаление компании из системы
+      operationId: deleteCompany
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID компании
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Компания успешно удалена
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Компания не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateCompanyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        domain:
+          type: string
+          maxLength: 100
+
+    UpdateCompanyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        domain:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+
+    CreateCompanyPublicRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+
+    CompanyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        domain:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/CompanyResponse'
+            - type: array
+              items:
+                $ref: '#/components/schemas/CompanyResponse'
+            - type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: integer

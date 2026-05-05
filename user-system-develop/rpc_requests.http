@@ -1,0 +1,57 @@
+### Базовый URL
+@baseUrl = http://localhost:8080/api/rpc
+
+### 1. Получить иерархию компании
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "company.getHierarchy",
+  "params": {
+    "company_id": "0e62f51c-b0a4-4a7f-ab35-78589913ebd5"
+  },
+  "id": 1
+}
+
+### 2. Получить пользователей по роли
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "user.getByRole",
+  "params": {
+    "role_id": "123e4567-e89b-12d3-a456-426614174000"
+  },
+  "id": 2
+}
+
+### 3. Получить всех пользователей с ролью
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "role.getUsers",
+  "params": {
+    "role_id": "123e4567-e89b-12d3-a456-426614174000"
+  },
+  "id": 3
+}
+
+### 4. Проверить доступ пользователя
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "permission.checkUserAccess",
+  "params": {
+    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+    "resource_type": "user",
+    "resource_id": "123e4567-e89b-12d3-a456-426614174000",
+    "action": "update"
+  },
+  "id": 4
+}

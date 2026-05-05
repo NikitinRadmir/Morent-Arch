@@ -1,0 +1,455 @@
+openapi: 3.0.0
+info:
+  title: Users Management API
+  description: API для управления пользователями
+  version: 1.0.0
+
+paths:
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      summary: Получение списка пользователей
+      description: Получение списка пользователей с пагинацией и фильтрацией
+      operationId: getUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Количество элементов на странице
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: company_id
+          in: query
+          description: Фильтр по компании
+          schema:
+            type: string
+            format: uuid
+        - name: is_active
+          in: query
+          description: Фильтр по активности
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список пользователей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResponse'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+        '400':
+          description: Неверные параметры запроса
+        '401':
+          description: Неавторизованный доступ
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      tags:
+        - Users
+      summary: Создание пользователя
+      description: Создание нового пользователя (требуются права администратора)
+      operationId: createUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              company_id: "123e4567-e89b-12d3-a456-426614174001"
+              email: "new.user@example.com"
+              password: "SecurePass123"
+              first_name: "Петр"
+              last_name: "Петров"
+              phone: "+79991234568"
+              department: "HR"
+              position: "Менеджер"
+      responses:
+        '201':
+          description: Пользователь успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '409':
+          description: Пользователь с таким email уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Получение пользователя по ID
+      description: Получение информации о конкретном пользователе
+      operationId: getUserById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о пользователе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Пользователь не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      tags:
+        - Users
+      summary: Обновление пользователя
+      description: Обновление информации о пользователе
+      operationId: updateUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            example:
+              email: "updated.user@example.com"
+              first_name: "Обновленное Имя"
+              last_name: "Обновленная Фамилия"
+              phone: "+79991234569"
+              department: "Обновленный отдел"
+              position: "Обновленная должность"
+              is_active: true
+      responses:
+        '200':
+          description: Пользователь успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Пользователь не найден
+        '409':
+          description: Пользователь с таким email уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      tags:
+        - Users
+      summary: Удаление пользователя
+      description: Удаление пользователя из системы
+      operationId: deleteUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Пользователь успешно удален
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Пользователь не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/users/{id}/change-password:
+    put:
+      tags:
+        - Users
+      summary: Смена пароля пользователя
+      description: Смена пароля пользователя (администратором или самим пользователем)
+      operationId: changeUserPassword
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Пароль успешно изменен
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ или неверный старый пароль
+        '404':
+          description: Пользователь не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/users/profile:
+    get:
+      tags:
+        - Users
+      summary: Получение профиля текущего пользователя
+      description: Получение информации о текущем авторизованном пользователе
+      operationId: getUserProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Пользователь не найден
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      tags:
+        - Users
+      summary: Обновление профиля текущего пользователя
+      description: Обновление информации профиля текущего пользователя
+      operationId: updateUserProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                department:
+                  type: string
+                position:
+                  type: string
+      responses:
+        '200':
+          description: Профиль успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/users/admin/dashboard:
+    get:
+      tags:
+        - Users
+      summary: Административная панель
+      description: Получение статистики для административной панели
+      operationId: getAdminDashboard
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: company_id
+          in: query
+          description: ID компании для фильтрации
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Статистика административной панели
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Неверные параметры запроса
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateUserRequest:
+      type: object
+      required:
+        - company_id
+        - email
+        - password
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        department:
+          type: string
+        position:
+          type: string
+
+    UpdateUserRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        department:
+          type: string
+        position:
+          type: string
+        is_active:
+          type: boolean
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        department:
+          type: string
+        position:
+          type: string
+        is_active:
+          type: boolean
+        last_login:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - old_password
+        - new_password
+      properties:
+        old_password:
+          type: string
+          format: password
+        new_password:
+          type: string
+          format: password
+          minLength: 8

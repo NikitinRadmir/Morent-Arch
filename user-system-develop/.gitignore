@@ -1,0 +1,43 @@
+# Бинарные файлы Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Директории сборки
+/bin/
+/build/
+/dist/
+
+# Файлы и папки IDE
+.idea/
+.vscode/
+
+# Файлы модулей Go
+go.sum
+# go.mod оставляем, чтобы проект собирался
+
+# Локальные конфиги и секреты
+.env
+.env.local
+.env.*.local
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.swp
+
+# Базы данных локальные
+*.db
+*.sqlite
+*.sqlite3
+
+# Кэш GORM / Go
+*.cache
+*_cache/
+
+# Docker
+docker-compose.override.yml

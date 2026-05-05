@@ -1,0 +1,433 @@
+openapi: 3.0.0
+info:
+  title: Role Permissions API
+  description: API для управления разрешениями ролей
+  version: 1.0.0
+
+paths:
+  /api/v1/roles/{roleId}/permissions:
+    post:
+      tags:
+        - Role Permissions
+      summary: Назначение разрешения роли
+      description: Назначение разрешения конкретной роли
+      operationId: assignPermissionToRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignPermissionRequest'
+            example:
+              role_id: "123e4567-e89b-12d3-a456-426614174001"
+              permission_id: "123e4567-e89b-12d3-a456-426614174002"
+      responses:
+        '200':
+          description: Разрешение успешно назначено роли
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав или попытка изменения системной роли
+        '404':
+          description: Роль или разрешение не найдено
+        '409':
+          description: Разрешение уже назначено этой роли
+        '500':
+          description: Внутренняя ошибка сервера
+
+    get:
+      tags:
+        - Role Permissions
+      summary: Получение разрешений роли
+      description: Получение списка разрешений, назначенных роли
+      operationId: getRolePermissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список разрешений роли
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PermissionResponse'
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Роль не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      tags:
+        - Role Permissions
+      summary: Удаление разрешения у роли
+      description: Удаление разрешения у конкретной роли
+      operationId: removePermissionFromRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+        - name: permissionId
+          in: query
+          required: true
+          description: ID разрешения
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Разрешение успешно удалено у роли
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные параметры запроса
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Назначение не найдено
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/permissions/{permissionId}/roles:
+    get:
+      tags:
+        - Role Permissions
+      summary: Получение ролей с разрешением
+      description: Получение списка ролей, которым назначено конкретное разрешение
+      operationId: getPermissionRoles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: permissionId
+          in: path
+          required: true
+          description: ID разрешения
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список ролей с разрешением
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoleResponse'
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Разрешение не найдено
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/roles/{roleId}/permissions/check:
+    post:
+      tags:
+        - Role Permissions
+      summary: Проверка наличия разрешения у роли
+      description: Проверка, назначено ли разрешение конкретной роли
+      operationId: checkPermissionAssignment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - permission_id
+              properties:
+                permission_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Результат проверки
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/CheckPermissionResponse'
+          examples:
+            assigned:
+              value:
+                message: "Permission check completed"
+                data:
+                  assigned: true
+            not_assigned:
+              value:
+                message: "Permission check completed"
+                data:
+                  assigned: false
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/roles/{roleId}/permissions/bulk-assign:
+    post:
+      tags:
+        - Role Permissions
+      summary: Массовое назначение разрешений
+      description: Массовое назначение нескольких разрешений роли
+      operationId: bulkAssignPermissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkPermissionsRequest'
+            example:
+              permission_ids:
+                - "123e4567-e89b-12d3-a456-426614174002"
+                - "123e4567-e89b-12d3-a456-426614174003"
+                - "123e4567-e89b-12d3-a456-426614174004"
+      responses:
+        '200':
+          description: Разрешения успешно назначены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Роль или некоторые разрешения не найдены
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/roles/{roleId}/permissions/bulk-remove:
+    post:
+      tags:
+        - Role Permissions
+      summary: Массовое удаление разрешений
+      description: Массовое удаление нескольких разрешений у роли
+      operationId: bulkRemovePermissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkPermissionsRequest'
+      responses:
+        '200':
+          description: Разрешения успешно удалены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Роль или некоторые разрешения не найдены
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Определяем RoleResponse здесь, так как он используется
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_system:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PermissionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AssignPermissionRequest:
+      type: object
+      required:
+        - role_id
+        - permission_id
+      properties:
+        role_id:
+          type: string
+          format: uuid
+        permission_id:
+          type: string
+          format: uuid
+
+    BulkPermissionsRequest:
+      type: object
+      required:
+        - permission_ids
+      properties:
+        permission_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+
+    CheckPermissionResponse:
+      type: object
+      properties:
+        assigned:
+          type: boolean
+
+    RolePermissionAssignmentResponse:
+      type: object
+      properties:
+        role_id:
+          type: string
+          format: uuid
+        permission_id:
+          type: string
+          format: uuid
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/RolePermissionAssignmentResponse'
+            - $ref: '#/components/schemas/CheckPermissionResponse'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: integer

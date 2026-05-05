@@ -1,0 +1,263 @@
+openapi: 3.0.0
+info:
+  title: Roles Management API
+  description: API для управления ролями
+  version: 1.0.0
+
+paths:
+  /api/v1/roles:
+    post:
+      tags:
+        - Roles
+      summary: Создание роли
+      description: Создание новой роли для компании
+      operationId: createRole
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+            example:
+              company_id: "123e4567-e89b-12d3-a456-426614174001"
+              name: "Менеджер"
+              description: "Роль менеджера компании"
+      responses:
+        '201':
+          description: Роль успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '409':
+          description: Роль с таким именем уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/roles/{id}:
+    get:
+      tags:
+        - Roles
+      summary: Получение роли по ID
+      description: Получение информации о конкретной роли
+      operationId: getRoleById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о роли
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверный формат ID
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Роль не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+    put:
+      tags:
+        - Roles
+      summary: Обновление роли
+      description: Обновление информации о роли
+      operationId: updateRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+            example:
+              name: "Обновленная роль"
+              description: "Обновленное описание роли"
+      responses:
+        '200':
+          description: Роль успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверные входные данные
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав или попытка изменения системной роли
+        '404':
+          description: Роль не найдена
+        '409':
+          description: Роль с таким именем уже существует
+        '500':
+          description: Внутренняя ошибка сервера
+
+    delete:
+      tags:
+        - Roles
+      summary: Удаление роли
+      description: Удаление роли из системы (системные роли удалить нельзя)
+      operationId: deleteRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID роли
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Роль успешно удалена
+        '400':
+          description: Неверный формат ID или попытка удаления системной роли
+        '401':
+          description: Неавторизованный доступ
+        '403':
+          description: Недостаточно прав
+        '404':
+          description: Роль не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /api/v1/companies/{companyId}/roles:
+    get:
+      tags:
+        - Roles
+      summary: Получение ролей компании
+      description: Получение списка ролей для конкретной компании
+      operationId: getCompanyRoles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          description: ID компании
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список ролей компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Неверный формат ID компании
+        '401':
+          description: Неавторизованный доступ
+        '404':
+          description: Компания не найдена
+        '500':
+          description: Внутренняя ошибка сервера
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateRoleRequest:
+      type: object
+      required:
+        - company_id
+        - name
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_system:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/RoleResponse'
+            - type: array
+              items:
+                $ref: '#/components/schemas/RoleResponse'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: integer
