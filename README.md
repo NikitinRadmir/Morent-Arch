@@ -22,19 +22,11 @@
 - Интеграция Morent с payment-service для оплаты аренды.
 - Интеграция Morent с EmailService для уведомлений.
 
-## Архитектурный обзор
+## C4 диаграммы
 
-```mermaid
-flowchart LR
-    UI[Morent Frontend] --> CORE[Morent Backend]
-    CORE --> DB[(PostgreSQL)]
-    CORE --> MINIO[(MinIO)]
-    CORE --> AGG[car-aggregator]
-    CORE --> PAY[payment-service]
-    CORE --> MAIL[EmailService]
-    CORE --> USR[user-system]
-    UI --> GEN[generator-service]
-```
+![C4 Level 1](docs/c4-diagrams/Morent-Arch-C4LVL1.svg)
+
+![C4 Level 2](docs/c4-diagrams/Morent-Arch-C4LVL2.svg)
 
 ## Витрина сервисов
 
