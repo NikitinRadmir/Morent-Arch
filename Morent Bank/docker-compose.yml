@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    image: morent-bank-web:local
+    container_name: morent-bank-web
+    ports:
+      - "8080:80"
+    restart: unless-stopped

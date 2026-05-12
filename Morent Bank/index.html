@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Morent Bank — Главная</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="mb-bg-pattern">
+    <header class="mb-header">
+      <div class="container">
+        <div class="row align-items-center gy-3">
+          <div class="col-md-3 col-6">
+            <a class="mb-logo" href="index.html">
+              <span class="mb-logo-mark">M</span>
+              Morent Bank
+            </a>
+          </div>
+          <div class="col-md-3 col-6 text-md-center text-end">
+            <div class="mb-header-balance">
+              <span class="mb-header-balance-label">Баланс:</span>
+              <strong class="mb-header-balance-value">125&nbsp;430&nbsp;₽</strong>
+            </div>
+          </div>
+          <div
+            class="col-md-4 col-12 d-flex flex-wrap gap-2 mb-header-actions justify-content-md-center justify-content-start"
+          >
+            <a href="deposit.html" class="btn mb-btn-accent mb-btn-header">Пополнение</a>
+            <a href="transfer.html" class="btn mb-btn-outline-light-custom mb-btn-header"
+              >Перевод</a
+            >
+          </div>
+          <div class="col-md-2 col-12 d-flex justify-content-md-end justify-content-end">
+            <div class="mb-profile">
+              <div>
+                <div class="mb-profile-name">Александр Петров</div>
+                <div class="mb-profile-role">Клиент</div>
+              </div>
+              <img
+                class="mb-profile-avatar"
+                src="src/img/profile.png"
+                width="44"
+                height="44"
+                alt="Фото профиля"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container mb-5">
+      <section class="mb-hero-balance text-center text-md-start">
+        <p class="mb-hero-balance-label mb-0">Доступно на счёте</p>
+        <p class="mb-hero-balance-value mb-0">
+          125&nbsp;430<span class="mb-hero-balance-currency">₽</span>
+        </p>
+      </section>
+
+      <section class="mb-4">
+        <h2 class="mb-section-title">Акции и предложения</h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <article class="mb-offer-card">
+              <span class="mb-offer-badge">Кэшбэк</span>
+              <h3 class="mb-offer-title">До 30% за покупки по карте</h3>
+              <p class="mb-offer-text">
+                Подключите категории в приложении и получайте повышенный кэшбэк у партнёров Morent
+                Bank.
+              </p>
+            </article>
+          </div>
+          <div class="col-md-4">
+            <article class="mb-offer-card">
+              <span class="mb-offer-badge">Вклад</span>
+              <h3 class="mb-offer-title">Ставка до 16% годовых</h3>
+              <p class="mb-offer-text">
+                Откройте вклад «Стабильный рост» онлайн — начисление процентов ежемесячно.
+              </p>
+            </article>
+          </div>
+          <div class="col-md-4">
+            <article class="mb-offer-card">
+              <span class="mb-offer-badge">Ипотека</span>
+              <h3 class="mb-offer-title">Сниженный первый взнос</h3>
+              <p class="mb-offer-text">
+                Программа для семей с детьми: одобрение за 48 часов и персональная ставка.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <p class="text-center mb-link-muted mb-0">
+        <a href="login.html">Вход</a>
+        &nbsp;·&nbsp;
+        <a href="register.html">Регистрация</a>
+      </p>
+    </main>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script src="js/phone-mask.js"></script>
+  </body>
+</html>

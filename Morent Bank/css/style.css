@@ -1,0 +1,352 @@
+/* Morent Bank — общие стили */
+
+:root {
+  --mb-navy: #0a2540;
+  --mb-navy-light: #1a3a5c;
+  --mb-accent: #00d4aa;
+  --mb-accent-dark: #00b894;
+  --mb-surface: #f6f8fb;
+  --mb-card: #ffffff;
+  --mb-text: #1a1a2e;
+  --mb-muted: #5c6b7a;
+  --mb-border: #e2e8f0;
+  --mb-shadow: 0 4px 24px rgba(10, 37, 64, 0.08);
+  --mb-radius: 14px;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--mb-text);
+  background: var(--mb-surface);
+  min-height: 100vh;
+}
+
+.mb-bg-pattern {
+  background-color: var(--mb-surface);
+  background-image: radial-gradient(
+    ellipse 120% 80% at 100% -20%,
+    rgba(0, 212, 170, 0.12) 0%,
+    transparent 55%
+  ),
+    radial-gradient(
+      ellipse 100% 60% at -10% 100%,
+      rgba(10, 37, 64, 0.06) 0%,
+      transparent 50%
+    );
+}
+
+/* Шапка главной */
+.mb-header {
+  background: linear-gradient(135deg, var(--mb-navy) 0%, var(--mb-navy-light) 100%);
+  color: #fff;
+  padding: 1rem 0;
+  box-shadow: var(--mb-shadow);
+}
+
+.mb-logo {
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mb-logo:hover {
+  color: var(--mb-accent);
+}
+
+.mb-logo-mark {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--mb-accent) 0%, var(--mb-accent-dark) 100%);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--mb-navy);
+}
+
+.mb-header-balance {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+}
+
+.mb-header-balance-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.mb-header-balance-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.mb-btn-header {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+}
+
+.mb-btn-accent {
+  background: var(--mb-accent);
+  border: none;
+  color: var(--mb-navy);
+}
+
+.mb-btn-accent:hover {
+  background: #33e0c0;
+  color: var(--mb-navy);
+}
+
+.mb-btn-outline-light-custom {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  background: transparent;
+}
+
+.mb-btn-outline-light-custom:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+  color: #fff;
+}
+
+.mb-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: right;
+}
+
+.mb-profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.mb-profile-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.mb-profile-role {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+/* Блок крупного баланса */
+.mb-hero-balance {
+  padding: 2rem 0 2.5rem;
+}
+
+.mb-hero-balance-label {
+  font-size: 0.9rem;
+  color: var(--mb-muted);
+  margin-bottom: 0.35rem;
+}
+
+.mb-hero-balance-value {
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--mb-navy);
+}
+
+.mb-hero-balance-currency {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--mb-muted);
+  vertical-align: super;
+  margin-left: 0.25rem;
+}
+
+/* Карточки акций */
+.mb-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--mb-navy);
+  margin-bottom: 1rem;
+}
+
+.mb-offer-card {
+  background: var(--mb-card);
+  border-radius: var(--mb-radius);
+  border: 1px solid var(--mb-border);
+  box-shadow: var(--mb-shadow);
+  padding: 1.25rem;
+  height: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mb-offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(10, 37, 64, 0.12);
+}
+
+.mb-offer-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(0, 212, 170, 0.15);
+  color: var(--mb-accent-dark);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.mb-offer-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--mb-navy);
+}
+
+.mb-offer-text {
+  font-size: 0.875rem;
+  color: var(--mb-muted);
+  margin-bottom: 0;
+}
+
+/* Формы (вход, регистрация и т.д.) */
+.mb-auth-wrapper {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.mb-auth-card {
+  background: var(--mb-card);
+  border-radius: var(--mb-radius);
+  border: 1px solid var(--mb-border);
+  box-shadow: var(--mb-shadow);
+  padding: 2rem;
+}
+
+.mb-auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--mb-navy);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.mb-form-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--mb-navy);
+}
+
+.mb-form-control {
+  border-radius: 10px;
+  border: 1px solid var(--mb-border);
+  padding: 0.65rem 0.9rem;
+}
+
+.mb-form-control:focus {
+  border-color: var(--mb-accent);
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+}
+
+.mb-btn-submit {
+  width: 100%;
+  padding: 0.75rem;
+  font-weight: 600;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--mb-accent) 0%, var(--mb-accent-dark) 100%);
+  border: none;
+  color: var(--mb-navy);
+}
+
+.mb-btn-submit:hover {
+  filter: brightness(1.05);
+  color: var(--mb-navy);
+}
+
+.mb-link-muted {
+  color: var(--mb-muted);
+  font-size: 0.9rem;
+}
+
+.mb-link-muted a {
+  color: var(--mb-accent-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mb-link-muted a:hover {
+  text-decoration: underline;
+}
+
+.mb-nav-simple {
+  padding: 0.75rem 0;
+  background: var(--mb-card);
+  border-bottom: 1px solid var(--mb-border);
+}
+
+.mb-nav-simple .mb-logo {
+  color: var(--mb-navy);
+}
+
+.mb-nav-simple .mb-logo:hover {
+  color: var(--mb-accent-dark);
+}
+
+.mb-nav-extra-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mb-accent-dark);
+  text-decoration: none;
+}
+
+.mb-nav-extra-link:hover {
+  text-decoration: underline;
+}
+
+.mb-nav-muted-link {
+  font-size: 0.875rem;
+  color: var(--mb-muted);
+  text-decoration: none;
+}
+
+.mb-nav-muted-link:hover {
+  color: var(--mb-navy);
+  text-decoration: underline;
+}
+
+/* Адаптив: шапка на узких экранах */
+@media (max-width: 767.98px) {
+  .mb-header .mb-profile {
+    margin-top: 1rem;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .mb-header-actions {
+    margin-top: 0.75rem;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
