@@ -61,7 +61,7 @@ make frontend      # Откроется на http://localhost:5173
 Backend поднимает **два сервера в одном процессе**:
 
 - **HTTP (REST + GraphQL + Swagger)**: `http://localhost:1488`
-- **gRPC (BookingService)**: `localhost:50051` (порт задаётся в `backend/config.json` через `grpc_port`)
+- **gRPC (BookingService)**: `localhost:50051` (порт задаётся переменной окружения `GRPC_PORT`)
 
 ### Где лежит контракт
 
@@ -101,7 +101,7 @@ Backend поднимает **два сервера в одном процесс�
 ---
 
 ## Важно
-- Параметры подключения к БД — в `backend/config.json`
+- Вся конфигурация backend — **только через переменные окружения** (см. `.env.example` в корне `Morent-project`). Файла `config.json` нет.
 - Пароль Postgres в Docker по умолчанию: `postgresmaster`
 - Для полного пересоздания базы: `make down` + `docker volume rm morent-project_postgres_data` + потом снова `make up` + `make seed`
 
@@ -133,7 +133,7 @@ make seed     # (Пере)загрузить тестовые данные в Б
 ---
 
 ## Вопросы/Запуск/Проблемы?
-- Проверьте .env/.config.json — правильные пароли/порты
+- Проверьте `.env` (скопируйте из `.env.example`) — пароли, порты, `DB_HOST`/`DB_PORT`, MinIO, Redis.
 - Остановите локальный Postgres на порту 5432/5433, если конфликтует с Docker
 - Для любых вопросов: см. README и комментарии в коде
 
@@ -154,6 +154,8 @@ Morent — это платформа аренды авто с полным ци�
 - минимальная OpenAPI‑схема (`/swagger.json`) для интеграции со Swagger UI / Postman.
 
 ### Запуск по шагам (локальная разработка)
+
+0. **Переменные окружения**: скопируйте `Morent-project/.env.example` в `.env` в том же каталоге. Для `make backend` вне Docker задайте `DB_HOST`, `DB_PORT`, `MINIO_ENDPOINT` и при необходимости `REDIS_ADDR` (см. комментарии в `.env.example`).
 
 1. **Поднять инфраструктуру (Postgres, MinIO по желанию)**:
 
