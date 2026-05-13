@@ -32,6 +32,39 @@ services:
       - "${MINIO_PORT_CONSOLE:-9001}:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:latest
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    volumes:
+      - ./docker/minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -44,7 +77,11 @@ services:
       db:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -59,6 +96,10 @@ services:
       MINIO_USE_SSL: ${MINIO_USE_SSL}
       GRPC_PORT: ${GRPC_PORT}
       AGGREGATOR_BASE_URL: ${AGGREGATOR_BASE_URL}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      CARS_CACHE_TTL_SEC: ${CARS_CACHE_TTL_SEC:-60}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
