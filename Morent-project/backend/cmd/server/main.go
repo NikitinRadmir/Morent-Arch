@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"go.uber.org/fx"
 
 	"morent-backend/internal/di"
@@ -16,9 +16,6 @@ import (
 )
 
 func main() {
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetLevel(log.InfoLevel)
-
 	app := fx.New(
 		di.Module,
 		fx.Provide(gqlschema.NewSchema),
@@ -39,7 +36,7 @@ func registerDatabaseLifecycle(lc fx.Lifecycle, container *di.Container) {
 			if err := sqlDB.PingContext(ctx); err != nil {
 				return err
 			}
-			log.Println("Подключение к БД установлено")
+			slog.Info("database connection established")
 
 			if err := migrations.RunMigrations(container.DB); err != nil {
 				return err

@@ -2,12 +2,11 @@ package httptransport
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/graphql-go/graphql"
-	log "github.com/sirupsen/logrus"
 	"go.uber.org/fx"
 
 	"morent-backend/internal/di"
@@ -18,7 +17,11 @@ import (
 	"morent-backend/internal/server"
 )
 
-func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.Schema) {
+func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.Schema, log *slog.Logger) {
+	if log == nil {
+		log = slog.Default()
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", common.WrapCORS(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodOptions {
@@ -45,9 +48,11 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.
 		w.Write([]byte(`{"error":"Not Found","message":"The requested resource was not found"}`))
 	}))
 
+	handler := common.WithRecover(log, mux)
+
 	httpSrv := &http.Server{
 		Addr:              ":1488",
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -63,17 +68,16 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.
 						return
 					case <-ticker.C:
 						if errLog := container.Storage.AppendDailyLog(context.Background(), "minio heartbeat (5m)"); errLog != nil {
-							log.Println("minio log write error:", errLog)
+							log.Warn("minio log write error", "error", errLog)
 						}
 					}
 				}
 			}()
 
 			go func() {
-				fmt.Printf("HTTP сервер запущен на порту %s\n", httpSrv.Addr)
-				fmt.Print("http://localhost:1488/")
+				log.Info("http server starting", "addr", httpSrv.Addr)
 				if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					log.Error("Ошибка запуска HTTP сервера:", err)
+					log.Error("http server error", "error", err)
 				}
 			}()
 			return nil

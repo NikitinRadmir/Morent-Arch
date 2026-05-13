@@ -1,8 +1,14 @@
 package di
 
 import (
+	"context"
+	"log/slog"
+	"time"
+
+	"morent-backend/internal/cache"
 	"morent-backend/internal/config"
 	"morent-backend/internal/handlers"
+	applog "morent-backend/internal/logger"
 	adminapp "morent-backend/internal/modules/admin/app"
 	adminmodule "morent-backend/internal/modules/admin"
 	authmodule "morent-backend/internal/modules/auth"
@@ -14,14 +20,18 @@ import (
 	"morent-backend/internal/service"
 	"morent-backend/internal/storage"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
 var Module = fx.Options(
 	fx.Provide(
+		applog.New,
 		provideConfig,
 		config.ConnectDB,
+		cache.ConnectRedis,
+		provideCarCache,
 		storage.NewMinioStorage,
 		service.NewLogService,
 		repository.NewCarRepository,
@@ -39,10 +49,31 @@ var Module = fx.Options(
 		handlers.NewMediaHandler,
 		buildContainer,
 	),
+	fx.Invoke(setSlogDefault),
+	fx.Invoke(registerRedisHook),
 )
 
+func provideCarCache(cfg *config.Config, rdb *redis.Client) *cache.CarCache {
+	return cache.NewCarCache(rdb, time.Duration(cfg.CarsCacheTTLSeconds)*time.Second)
+}
+
+func setSlogDefault(l *slog.Logger) {
+	slog.SetDefault(l)
+}
+
+func registerRedisHook(lc fx.Lifecycle, rdb *redis.Client) {
+	if rdb == nil {
+		return
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return rdb.Close()
+		},
+	})
+}
+
 func provideConfig() (*config.Config, error) {
-	return config.LoadConfig("config.json")
+	return config.LoadFromEnv()
 }
 
 type containerParams struct {

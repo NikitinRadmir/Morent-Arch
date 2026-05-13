@@ -1,6 +1,9 @@
 package cars
 
 import (
+	"log/slog"
+
+	"morent-backend/internal/cache"
 	"morent-backend/internal/handlers"
 	"morent-backend/internal/repository"
 	"morent-backend/internal/service"
@@ -14,8 +17,8 @@ type Outputs struct {
 	Handler *handlers.CarHandler
 }
 
-func NewModule(carRepo *repository.CarRepository, logService *service.LogService) Outputs {
-	carService := service.NewCarService(carRepo)
+func NewModule(carRepo *repository.CarRepository, logService *service.LogService, carCache *cache.CarCache, log *slog.Logger) Outputs {
+	carService := service.NewCarService(carRepo, carCache, log)
 	carHandler := handlers.NewCarHandler(carService, logService)
 
 	return Outputs{

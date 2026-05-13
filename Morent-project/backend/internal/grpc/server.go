@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 
 	"morent-backend/internal/config"
@@ -16,7 +17,7 @@ type Server struct {
 	listener   net.Listener
 }
 
-func Start(cfg *config.Config, rentalService *service.RentalService) (*Server, error) {
+func Start(cfg *config.Config, rentalService *service.RentalService, log *slog.Logger) (*Server, error) {
 	port := cfg.GRPCPort
 	if port == "" {
 		port = "50051"
@@ -28,7 +29,10 @@ func Start(cfg *config.Config, rentalService *service.RentalService) (*Server, e
 		return nil, err
 	}
 
-	s := grpc.NewServer()
+	if log == nil {
+		log = slog.Default()
+	}
+	s := grpc.NewServer(grpc.ChainUnaryInterceptor(recoveryUnaryInterceptor(log)))
 	bookingpb.RegisterBookingServiceServer(s, NewBookingServiceServer(rentalService))
 
 	go func() {
