@@ -3,33 +3,44 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
+// Config загружается только из переменных окружения (см. .env.example в корне Morent-project).
 type Config struct {
-	DBHost     string `json:"db_host"`
-	DBPort     string `json:"db_port"`
-	DBUser     string `json:"db_user"`
-	DBPassword string `json:"db_password"`
-	DBName     string `json:"db_name"`
+	DBHost     string
+	DBPort     string
+	DBUser     string
+	DBPassword string
+	DBName     string
 
-	MinioEndpoint       string `json:"minio_endpoint"`
-	MinioAccessKey      string `json:"minio_access_key"`
-	MinioSecretKey      string `json:"minio_secret_key"`
-	MinioBucket         string `json:"minio_bucket"`
-	MinioPublicEndpoint string `json:"minio_public_endpoint"`
-	MinioUseSSL         bool   `json:"minio_use_ssl"`
+	MinioEndpoint       string
+	MinioAccessKey      string
+	MinioSecretKey      string
+	MinioBucket         string
+	MinioPublicEndpoint string
+	MinioUseSSL         bool
 
-	GRPCPort string `json:"grpc_port"`
+	GRPCPort string
 
-	FrontendOrigin       string `json:"frontend_origin"`
-	AggregatorTimeoutSec int    `json:"aggregator_timeout_sec"`
-	AggregatorRetryCount int    `json:"aggregator_retry_count"`
-	SessionCookieName    string `json:"session_cookie_name"`
-	SessionCookieSecure  bool   `json:"session_cookie_secure"`
-	SessionCookieDomain  string `json:"session_cookie_domain"`
+	FrontendOrigin        string
+	AggregatorBaseURL     string
+	AggregatorTimeoutSec  int
+	AggregatorRetryCount  int
+	SessionCookieName     string
+	SessionCookieSecure   bool
+	SessionCookieDomain   string
+
+	RedisAddr             string
+	RedisPassword         string
+	RedisDB               int
+	CarsCacheTTLSeconds   int
 }
 
-func LoadConfig(_ string) (*Config, error) {
+// LoadFromEnv читает конфигурацию из окружения. Файл config.json не используется.
+func LoadFromEnv() (*Config, error) {
+	baseURL := strings.TrimRight(getEnv("AGGREGATOR_BASE_URL", "http://localhost:8080"), "/")
+
 	cfg := &Config{
 		DBHost:               getEnv("DB_HOST", "localhost"),
 		DBPort:               getEnv("DB_PORT", "5433"),
@@ -43,10 +54,15 @@ func LoadConfig(_ string) (*Config, error) {
 		MinioPublicEndpoint:  getEnv("MINIO_PUBLIC_ENDPOINT", ""),
 		GRPCPort:             getEnv("GRPC_PORT", "50051"),
 		FrontendOrigin:       getEnv("FRONTEND_ORIGIN", "http://localhost:5173"),
+		AggregatorBaseURL:    baseURL,
 		AggregatorTimeoutSec: getEnvInt("AGGREGATOR_TIMEOUT_SEC", 35),
 		AggregatorRetryCount: getEnvInt("AGGREGATOR_RETRY_COUNT", 3),
 		SessionCookieName:    getEnv("SESSION_COOKIE_NAME", "morent_session"),
 		SessionCookieDomain:  getEnv("SESSION_COOKIE_DOMAIN", ""),
+		RedisAddr:            getEnv("REDIS_ADDR", ""),
+		RedisPassword:        getEnv("REDIS_PASSWORD", ""),
+		RedisDB:              getEnvInt("REDIS_DB", 0),
+		CarsCacheTTLSeconds:  getEnvInt("CARS_CACHE_TTL_SEC", 60),
 	}
 	cfg.MinioUseSSL = getEnvBool("MINIO_USE_SSL", false)
 	cfg.SessionCookieSecure = getEnvBool("SESSION_COOKIE_SECURE", false)
