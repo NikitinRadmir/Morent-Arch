@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -42,7 +41,7 @@ func NewAdminHandler(
 	cfg *config.Config,
 	storage *storage.MinioStorage,
 ) *AdminHandler {
-	baseURL := strings.TrimRight(os.Getenv("AGGREGATOR_BASE_URL"), "/")
+	baseURL := strings.TrimRight(cfg.AggregatorBaseURL, "/")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}

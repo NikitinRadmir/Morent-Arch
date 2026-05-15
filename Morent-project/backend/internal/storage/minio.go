@@ -33,23 +33,8 @@ func NewMinioStorage(cfg *config.Config) (*MinioStorage, error) {
 		return nil, fmt.Errorf("minio check bucket: %w", err)
 	}
 	if !exists {
-		if err := client.MakeBucket(ctx, cfg.MinioBucket, minio.MakeBucketOptions{}); err != nil {
-			return nil, fmt.Errorf("minio create bucket: %w", err)
-		}
+		return nil, fmt.Errorf("minio bucket %q does not exist: run minio-init (docker compose) or create bucket manually", cfg.MinioBucket)
 	}
-
-	publicPolicy := fmt.Sprintf(`{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {"AWS": ["*"]},
-      "Action": ["s3:GetObject"],
-      "Resource": ["arn:aws:s3:::%s/*"]
-    }
-  ]
-}`, cfg.MinioBucket)
-	_ = client.SetBucketPolicy(ctx, cfg.MinioBucket, publicPolicy)
 
 	return &MinioStorage{
 		Client: client,
