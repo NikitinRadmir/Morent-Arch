@@ -1243,6 +1243,88 @@ i.fa-regular.fa-heart {
   font-weight: 600;
 }
 
+.password-field-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.password-field-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.password-generate-btn {
+  flex-shrink: 0;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: #eef2ff;
+  color: #3563e9;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.password-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.password-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.password-hint--error {
+  color: #b91c1c;
+}
+
+.password-hint--warn {
+  color: #b45309;
+}
+
+.password-requirements {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.password-requirements__item {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  padding-left: 20px;
+  position: relative;
+}
+
+.password-requirements__item::before {
+  content: '○';
+  position: absolute;
+  left: 0;
+  color: #cbd5e1;
+}
+
+.password-requirements__item--ok {
+  color: #15803d;
+}
+
+.password-requirements__item--ok::before {
+  content: '✓';
+  color: #16a34a;
+}
+
+.settings-password-row input.form-container-input {
+  flex: 1;
+  min-width: 0;
+}
+
 .rentals-page .container {
   max-width: 1200px;
 }

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"generator-service/internal/generators"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -74,4 +76,28 @@ func (h *GeneratorHandler) GenerateQRCode(c *gin.Context) {
 	}
 
 	c.Data(http.StatusOK, "image/png", qrCode)
+}
+
+type validatePasswordRequest struct {
+	Password string `json:"password"`
+}
+
+// ValidatePassword проверяет пароль по правилам сервиса (тело POST, пароль не логируется).
+func (h *GeneratorHandler) ValidatePassword(c *gin.Context) {
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 512))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	var req validatePasswordRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+		return
+	}
+	if req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
+		return
+	}
+	result := generators.ValidatePassword(req.Password)
+	c.JSON(http.StatusOK, result)
 }

@@ -26,6 +26,16 @@ GET /api/v1/password
 }
 ```
 
+#### Валидация пароля
+```
+POST /api/v1/password/validate
+Content-Type: application/json
+
+{"password": "Ab1!xxxxxx"}
+```
+
+Ответ: `valid`, `errors`, флаги `hasLower`, `hasUpper`, `hasDigit`, `hasSpecial`, `lengthOk`.
+
 #### Генерация по маске
 ```
 GET /api/v1/password/mask?mask=LLLdddss

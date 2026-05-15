@@ -1,6 +1,8 @@
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import NewPasswordField from '../components/NewPasswordField';
+import { usePasswordField } from '../hooks/usePasswordField';
 
 const initialState = {
     name: '',
@@ -15,16 +17,29 @@ const SignUp = () => {
     const [form, setForm] = useState(initialState);
     const [status, setStatus] = useState({ type: '', message: '' });
     const [loading, setLoading] = useState(false);
+    const passwordField = usePasswordField(form.password);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
+        if (name === 'password') {
+            passwordField.resetGeneratorState();
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         if (form.password !== form.confirmPassword) {
-            setStatus({ type: 'error', message: 'Passwords do not match' });
+            setStatus({ type: 'error', message: 'Пароли не совпадают' });
+            return;
+        }
+
+        if (!passwordField.isValid) {
+            setStatus({
+                type: 'error',
+                message: 'Пароль не соответствует требованиям безопасности',
+            });
             return;
         }
 
@@ -45,26 +60,35 @@ const SignUp = () => {
         }
     };
 
+    const passwordsMatch =
+        form.confirmPassword.length > 0 && form.password === form.confirmPassword;
+    const canSubmit =
+        !loading &&
+        !passwordField.checking &&
+        passwordField.isValid &&
+        passwordsMatch &&
+        form.name.trim() &&
+        form.email.trim();
+
     return (
         <div className="auth-page">
             <div className="auth-card">
-                <h2>Create account</h2>
-                <p className="auth-subtitle">Register to manage your rentals faster.</p>
+                <h2>Создать аккаунт</h2>
+                <p className="auth-subtitle">Регистрация для быстрого управления арендой.</p>
                 {status.message && (
-                    <div className={`auth-alert auth-alert--${status.type}`}>
-                        {status.message}
-                    </div>
+                    <div className={`auth-alert auth-alert--${status.type}`}>{status.message}</div>
                 )}
-                <form className="auth-form" onSubmit={handleSubmit}>
+                <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
                     <label>
-                        Full name
+                        Имя
                         <input
                             type="text"
                             name="name"
                             value={form.name}
                             onChange={handleChange}
-                            placeholder="John Carter"
+                            placeholder="Иван Иванов"
                             required
+                            autoComplete="name"
                         />
                     </label>
                     <label>
@@ -76,38 +100,46 @@ const SignUp = () => {
                             onChange={handleChange}
                             placeholder="name@example.com"
                             required
+                            autoComplete="email"
                         />
                     </label>
+                    <NewPasswordField
+                        label="Пароль"
+                        value={form.password}
+                        onChange={(value) => {
+                            setForm((prev) => ({ ...prev, password: value }));
+                            passwordField.resetGeneratorState();
+                        }}
+                        onGenerated={(value) => {
+                            setForm((prev) => ({ ...prev, password: value, confirmPassword: value }));
+                        }}
+                        disabled={loading}
+                        requirementsId="signup-password-requirements"
+                        placeholder="Создайте пароль"
+                        passwordField={passwordField}
+                    />
                     <label>
-                        Password
-                        <input
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            placeholder="Create password"
-                            required
-                            minLength={6}
-                        />
-                    </label>
-                    <label>
-                        Confirm password
+                        Подтвердите пароль
                         <input
                             type="password"
                             name="confirmPassword"
                             value={form.confirmPassword}
                             onChange={handleChange}
-                            placeholder="Repeat password"
+                            placeholder="Повторите пароль"
                             required
-                            minLength={6}
+                            autoComplete="new-password"
+                            aria-invalid={form.confirmPassword.length > 0 && !passwordsMatch}
                         />
+                        {form.confirmPassword.length > 0 && !passwordsMatch && (
+                            <p className="password-hint password-hint--error">Пароли не совпадают</p>
+                        )}
                     </label>
-                    <button className="auth-submit" type="submit" disabled={loading}>
-                        {loading ? 'Creating account...' : 'Sign up'}
+                    <button className="auth-submit" type="submit" disabled={!canSubmit}>
+                        {loading ? 'Создание…' : 'Зарегистрироваться'}
                     </button>
                 </form>
                 <p className="auth-meta">
-                    Already have an account? <Link to="/sign-in">Sign in</Link>
+                    Уже есть аккаунт? <Link to="/sign-in">Войти</Link>
                 </p>
             </div>
         </div>
@@ -115,4 +147,3 @@ const SignUp = () => {
 };
 
 export default SignUp;
-

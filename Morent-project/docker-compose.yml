@@ -96,6 +96,7 @@ services:
       MINIO_USE_SSL: ${MINIO_USE_SSL}
       GRPC_PORT: ${GRPC_PORT}
       AGGREGATOR_BASE_URL: ${AGGREGATOR_BASE_URL}
+      GENERATOR_BASE_URL: ${GENERATOR_BASE_URL:-http://host.docker.internal:8081}
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: ${REDIS_DB:-0}

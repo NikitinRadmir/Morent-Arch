@@ -35,4 +35,5 @@ type Container struct {
 	AuthHandler        *handlers.AuthHandler
 	FavoriteHandler    *handlers.FavoriteHandler
 	RentalHandler      *handlers.RentalHandler
+	PasswordHandler    *handlers.PasswordHandler
 }

@@ -46,6 +46,7 @@ func main() {
 	{
 		api.GET("/password", handler.GeneratePassword)
 		api.GET("/password/mask", handler.GeneratePasswordByMask)
+		api.POST("/password/validate", handler.ValidatePassword)
 		api.GET("/qrcode", handler.GenerateQRCode)
 	}
 

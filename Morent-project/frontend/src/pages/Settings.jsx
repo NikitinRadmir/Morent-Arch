@@ -1,6 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import NewPasswordField from '../components/NewPasswordField';
+import { usePasswordField } from '../hooks/usePasswordField';
 
 const uploadImage = async (file, setStatus) => {
   if (!file) return '';
@@ -41,6 +43,7 @@ const Settings = () => {
     const [error, setError] = useState('');
     const [avatarUploadStatus, setAvatarUploadStatus] = useState('idle');
     const navigate = useNavigate();
+    const newPasswordField = usePasswordField(newPassword);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -95,22 +98,46 @@ const Settings = () => {
         setMessage('');
         setError('');
         try {
+            if (!oldPassword.trim()) {
+                setError('Введите текущий пароль');
+                setLoading(false);
+                return;
+            }
             if (newPassword !== confirmPassword) {
-                setError('New passwords do not match');
+                setError('Новые пароли не совпадают');
+                setLoading(false);
+                return;
+            }
+            if (!newPasswordField.isValid) {
+                setError('Новый пароль не соответствует требованиям безопасности');
+                setLoading(false);
+                return;
+            }
+            if (newPasswordField.checking) {
                 setLoading(false);
                 return;
             }
             await changePassword({ oldPassword, newPassword });
-            setMessage('Password changed');
+            setMessage('Пароль изменён');
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
+            newPasswordField.resetGeneratorState();
         } catch (e) {
-            setError(e.message || 'Failed to change password');
+            setError(e.message || 'Не удалось сменить пароль');
         } finally {
             setLoading(false);
         }
     };
+
+    const passwordsMatch =
+        confirmPassword.length > 0 && newPassword === confirmPassword;
+    const canChangePassword =
+        !loading &&
+        !newPasswordField.checking &&
+        newPasswordField.isValid &&
+        passwordsMatch &&
+        oldPassword.trim().length > 0;
 
     if (!isAuthenticated) {
         return null;
@@ -228,41 +255,58 @@ const Settings = () => {
 
                     {activeTab === 'password' && (
                         <div>
-                            <h4 className="mb-3">Change password</h4>
+                            <h4 className="mb-3">Смена пароля</h4>
                             <label className="settings-label">
-                                Current password
+                                Текущий пароль
                                 <input
                                     type="password"
                                     className="form-container-input mt-2"
                                     value={oldPassword}
                                     onChange={(e) => setOldPassword(e.target.value)}
+                                    autoComplete="current-password"
                                 />
                             </label>
-                            <label className="settings-label mt-3">
-                                New password
-                                <input
-                                    type="password"
-                                    className="form-container-input mt-2"
+                            <div className="mt-3">
+                                <NewPasswordField
+                                    label="Новый пароль"
                                     value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    onChange={(value) => {
+                                        setNewPassword(value);
+                                        newPasswordField.resetGeneratorState();
+                                    }}
+                                    onGenerated={(value) => {
+                                        setNewPassword(value);
+                                        setConfirmPassword(value);
+                                    }}
+                                    disabled={loading}
+                                    requirementsId="settings-password-requirements"
+                                    labelWrapper="settings"
+                                    inputClassName="form-container-input"
+                                    placeholder="Введите новый пароль"
+                                    passwordField={newPasswordField}
                                 />
-                            </label>
+                            </div>
                             <label className="settings-label mt-3">
-                                Confirm new password
+                                Подтвердите новый пароль
                                 <input
                                     type="password"
                                     className="form-container-input mt-2"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
                                 />
+                                {confirmPassword.length > 0 && !passwordsMatch && (
+                                    <p className="password-hint password-hint--error">Пароли не совпадают</p>
+                                )}
                             </label>
                             <button
                                 type="button"
                                 className="auth-submit mt-3"
                                 onClick={handlePasswordSave}
-                                disabled={loading}
+                                disabled={!canChangePassword}
                             >
-                                {loading ? 'Saving...' : 'Change password'}
+                                {loading ? 'Сохранение…' : 'Сменить пароль'}
                             </button>
                         </div>
                     )}

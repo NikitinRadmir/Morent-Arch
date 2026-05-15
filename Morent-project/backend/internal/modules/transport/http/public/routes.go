@@ -39,6 +39,8 @@ func Register(mux *http.ServeMux, container *di.Container) {
 			{Method: http.MethodDelete, Path: "/Delete/", Handler: container.CommentHandler.DeleteComment},
 		}},
 		{Prefix: "/auth", Routes: []server.Route{
+			{Method: http.MethodPost, Path: "/password/generate", Handler: container.PasswordHandler.Generate},
+			{Method: http.MethodPost, Path: "/password/validate", Handler: container.PasswordHandler.Validate},
 			{Method: http.MethodPost, Path: "/register", Handler: container.AuthHandler.Register},
 			{Method: http.MethodPost, Path: "/login", Handler: container.AuthHandler.Login},
 			{Method: http.MethodPost, Path: "/logout", Handler: container.AuthHandler.Logout},

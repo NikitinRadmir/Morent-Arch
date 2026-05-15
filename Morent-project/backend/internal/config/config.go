@@ -27,6 +27,7 @@ type Config struct {
 	AggregatorBaseURL     string
 	AggregatorTimeoutSec  int
 	AggregatorRetryCount  int
+	GeneratorBaseURL      string
 	SessionCookieName     string
 	SessionCookieSecure   bool
 	SessionCookieDomain   string
@@ -57,6 +58,7 @@ func LoadFromEnv() (*Config, error) {
 		AggregatorBaseURL:    baseURL,
 		AggregatorTimeoutSec: getEnvInt("AGGREGATOR_TIMEOUT_SEC", 35),
 		AggregatorRetryCount: getEnvInt("AGGREGATOR_RETRY_COUNT", 3),
+		GeneratorBaseURL:     strings.TrimRight(getEnv("GENERATOR_BASE_URL", "http://localhost:8080"), "/"),
 		SessionCookieName:    getEnv("SESSION_COOKIE_NAME", "morent_session"),
 		SessionCookieDomain:  getEnv("SESSION_COOKIE_DOMAIN", ""),
 		RedisAddr:            getEnv("REDIS_ADDR", ""),

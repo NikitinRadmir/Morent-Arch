@@ -4,7 +4,7 @@ services:
   generator-service:
     build: .
     ports:
-      - "8080:8080"
+      - "${GENERATOR_PORT:-8081}:8080"
     environment:
       - PORT=8080
       - CORS_ALLOWED_ORIGINS=*
