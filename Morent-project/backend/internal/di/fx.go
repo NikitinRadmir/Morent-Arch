@@ -47,6 +47,8 @@ var Module = fx.Options(
 		rentalsmodule.NewModule,
 		adminmodule.NewModule,
 		handlers.NewMediaHandler,
+		provideGeneratorClient,
+		handlers.NewPasswordHandler,
 		buildContainer,
 	),
 	fx.Invoke(setSlogDefault),
@@ -76,6 +78,10 @@ func provideConfig() (*config.Config, error) {
 	return config.LoadFromEnv()
 }
 
+func provideGeneratorClient(cfg *config.Config) *service.GeneratorClient {
+	return service.NewGeneratorClient(cfg.GeneratorBaseURL)
+}
+
 type containerParams struct {
 	fx.In
 	Config             *config.Config
@@ -101,6 +107,7 @@ type containerParams struct {
 	AuthHandler        *handlers.AuthHandler
 	FavoriteHandler    *handlers.FavoriteHandler
 	RentalHandler      *handlers.RentalHandler
+	PasswordHandler    *handlers.PasswordHandler
 }
 
 func buildContainer(p containerParams) *Container {
@@ -128,5 +135,6 @@ func buildContainer(p containerParams) *Container {
 		AuthHandler:        p.AuthHandler,
 		FavoriteHandler:    p.FavoriteHandler,
 		RentalHandler:      p.RentalHandler,
+		PasswordHandler:    p.PasswordHandler,
 	}
 }

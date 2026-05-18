@@ -20,6 +20,7 @@ import BankRegister from './bank/pages/BankRegister';
 import BankTransfer from './bank/pages/BankTransfer';
 import BankDeposit from './bank/pages/BankDeposit';
 
+
 const App = () => {
   return (
     <Router>
