@@ -37,6 +37,39 @@ export function validatePasswordFallback(password) {
     };
 }
 
+function pickRandom(chars) {
+    return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+/** Локальная генерация, если generator-service недоступен (те же правила 10–14 символов). */
+export function generatePasswordFallback() {
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const digits = '0123456789';
+    const all = lower + upper + digits + SPECIAL;
+    const length = 10 + Math.floor(Math.random() * 5);
+
+    const chars = [
+        pickRandom(lower),
+        pickRandom(upper),
+        pickRandom(digits),
+        pickRandom(SPECIAL),
+    ];
+    while (chars.length < length) {
+        chars.push(pickRandom(all));
+    }
+    return shuffle(chars).join('');
+}
+
 export function requirementStatus(result) {
     if (!result) {
         return {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { generatePassword } from '../api/passwordApi';
 import { useDebouncedPasswordValidation } from './useDebouncedPasswordValidation';
-import { requirementStatus } from '../utils/passwordFallback';
+import { generatePasswordFallback, requirementStatus } from '../utils/passwordFallback';
 
 /** Генерация + debounced-валидация нового пароля (как на регистрации). */
 export function usePasswordField(password) {
@@ -22,15 +22,16 @@ export function usePasswordField(password) {
 
         if (!result.ok) {
             if (result.unavailable) {
+                const password = generatePasswordFallback();
                 setGeneratorUnavailable(true);
-                setGenerateError('Сервис генерации паролей недоступен. Введите пароль вручную.');
-            } else {
-                setGenerateError(result.error || 'Не удалось сгенерировать пароль');
+                setGenerateError('');
+                return { ok: true, password, usedLocalFallback: true };
             }
+            setGenerateError(result.error || 'Не удалось сгенерировать пароль');
             return { ok: false, password: null };
         }
 
-        return { ok: true, password: result.password };
+        return { ok: true, password: result.password, usedLocalFallback: false };
     };
 
     const resetGeneratorState = () => {

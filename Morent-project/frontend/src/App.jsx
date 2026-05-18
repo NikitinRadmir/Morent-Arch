@@ -13,7 +13,6 @@ import Settings from './pages/Settings';
 import Admin from './pages/Admin';
 import RentalSuccess from './pages/RentalSuccess';
 import NotFound from './pages/NotFound';
-import SoapBooking from './pages/SoapBooking';
 
 const App = () => {
     return (

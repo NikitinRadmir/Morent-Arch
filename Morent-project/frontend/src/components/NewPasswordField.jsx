@@ -1,4 +1,5 @@
 import React from 'react';
+import PasswordInput from './PasswordInput';
 import { PASSWORD_REQUIREMENTS } from '../utils/passwordFallback';
 
 const NewPasswordField = ({
@@ -25,16 +26,19 @@ const NewPasswordField = ({
     } = passwordField;
 
     const handleGenerate = async () => {
-        const result = await generate();
-        if (result.ok && result.password) {
-            onChange(result.password);
-            onGenerated?.(result.password);
+        try {
+            const result = await generate();
+            if (result.ok && result.password) {
+                onChange(result.password);
+                onGenerated?.(result.password);
+            }
+        } catch {
+            // generate() не должен бросать; на случай регрессии
         }
     };
 
     const input = (
-        <input
-            type="password"
+        <PasswordInput
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
@@ -42,7 +46,7 @@ const NewPasswordField = ({
             autoComplete="new-password"
             aria-invalid={isInvalid}
             aria-describedby={requirementsId}
-            className={inputClassName}
+            inputClassName={inputClassName}
             disabled={disabled}
         />
     );

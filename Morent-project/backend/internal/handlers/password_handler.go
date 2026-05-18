@@ -29,13 +29,13 @@ func (h *PasswordHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.generator.Enabled() {
-		http.Error(w, "generator service unavailable", http.StatusServiceUnavailable)
+		writeGeneratorUnavailable(w)
 		return
 	}
 	password, err := h.generator.GeneratePassword(r.Context())
 	if err != nil {
 		h.log.Warn("password generate failed", "error", err)
-		http.Error(w, "generator service unavailable", http.StatusServiceUnavailable)
+		writeGeneratorUnavailable(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -92,4 +92,14 @@ func (h *PasswordHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+func writeGeneratorUnavailable(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"unavailable": true,
+		"error":       "generator service unavailable",
+	})
 }

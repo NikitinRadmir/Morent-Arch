@@ -1243,15 +1243,67 @@ i.fa-regular.fa-heart {
   font-weight: 600;
 }
 
+.password-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.password-input-wrap__field {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.password-visibility-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.password-visibility-btn:hover:not(:disabled) {
+  color: #3563e9;
+  background: #f1f5f9;
+}
+
+.password-visibility-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .password-field-row {
   display: flex;
   gap: 8px;
   align-items: stretch;
 }
 
-.password-field-row input {
+.password-field-row .password-input-wrap {
   flex: 1;
   min-width: 0;
+}
+
+.auth-form label .password-input-wrap {
+  width: 100%;
+}
+
+.auth-form label .password-input-wrap__field {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 12px 44px 12px 16px;
+  font-size: 15px;
 }
 
 .password-generate-btn {
@@ -1320,9 +1372,13 @@ i.fa-regular.fa-heart {
   color: #16a34a;
 }
 
-.settings-password-row input.form-container-input {
+.settings-password-row .password-input-wrap {
   flex: 1;
   min-width: 0;
+}
+
+.password-input-wrap__field.form-container-input {
+  padding-right: 44px;
 }
 
 .rentals-page .container {

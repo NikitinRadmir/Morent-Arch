@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import NewPasswordField from '../components/NewPasswordField';
+import PasswordInput from '../components/PasswordInput';
 import { usePasswordField } from '../hooks/usePasswordField';
 
 const initialState = {
@@ -120,8 +121,7 @@ const SignUp = () => {
                     />
                     <label>
                         Подтвердите пароль
-                        <input
-                            type="password"
+                        <PasswordInput
                             name="confirmPassword"
                             value={form.confirmPassword}
                             onChange={handleChange}
