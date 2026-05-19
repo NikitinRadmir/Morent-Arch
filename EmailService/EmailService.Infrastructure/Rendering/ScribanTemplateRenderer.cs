@@ -9,38 +9,78 @@ using Scriban;
 
 namespace EmailService.Infrastructure.Rendering;
 
+/// <summary>
+/// Renders email templates using the Scriban template engine.
+/// </summary>
 public partial class ScribanTemplateRenderer : ITemplateRenderer
 {
     private readonly TemplatesOptions _options;
     private readonly IMemoryCache _cache;
+
     private static readonly Regex SubjectRegex = MySubjectRegex();
 
-    public ScribanTemplateRenderer(IOptions<TemplatesOptions> options, IMemoryCache cache)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ScribanTemplateRenderer"/> class.
+    /// </summary>
+    /// <param name="options">Template rendering configuration options.</param>
+    /// <param name="cache">Memory cache instance.</param>
+    public ScribanTemplateRenderer(
+        IOptions<TemplatesOptions> options,
+        IMemoryCache cache)
     {
         _options = options.Value;
         _cache = cache;
     }
 
-    public async Task<RenderedEmail> RenderAsync(EmailRequest request, CancellationToken ct = default)
+    /// <summary>
+    /// Renders an email template using the provided request data.
+    /// </summary>
+    /// <param name="request">Email request containing template information.</param>
+    /// <param name="ct">Cancellation token for the operation.</param>
+    /// <returns>A rendered email instance.</returns>
+    /// <exception cref="TemplateNotFoundException">
+    /// Thrown when the template file cannot be found.
+    /// </exception>
+    public async Task<RenderedEmail> RenderAsync(
+        EmailRequest request,
+        CancellationToken ct = default)
     {
         var templateKey = request.TemplateKey;
-        var filePath = Path.Combine(_options.BasePath, templateKey + _options.DefaultExtension);
+
+        var filePath = Path.Combine(
+            _options.BasePath,
+            templateKey + _options.DefaultExtension);
 
         if (!File.Exists(filePath))
+        {
             throw new TemplateNotFoundException(templateKey);
+        }
 
         var cacheKey = $"tpl:{templateKey}";
+
         var template = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_options.CacheDurationSeconds);
+            entry.AbsoluteExpirationRelativeToNow =
+                TimeSpan.FromSeconds(_options.CacheDurationSeconds);
+
             var html = await File.ReadAllTextAsync(filePath, ct);
+
             return Template.Parse(html);
         })!;
 
-        var renderedHtml = await template.RenderAsync(request.Variables, memberRenamer: member => member.Name);
+        var renderedHtml = await template.RenderAsync(
+            request.Variables,
+            memberRenamer: member => member.Name);
+
         var subjectMatch = SubjectRegex.Match(renderedHtml);
-        var subject = subjectMatch.Success ? subjectMatch.Groups[1].Value.Trim() : "Без темы";
-        var cleanHtml = SubjectRegex.Replace(renderedHtml, "").Trim();
+
+        var subject = subjectMatch.Success
+            ? subjectMatch.Groups[1].Value.Trim()
+            : "Без темы";
+
+        var cleanHtml = SubjectRegex
+            .Replace(renderedHtml, "")
+            .Trim();
 
         return new RenderedEmail
         {
@@ -52,6 +92,10 @@ public partial class ScribanTemplateRenderer : ITemplateRenderer
         };
     }
 
+    /// <summary>
+    /// Creates a regular expression for extracting the email subject.
+    /// </summary>
+    /// <returns>Compiled regular expression instance.</returns>
     [GeneratedRegex(@"<subject>(.*?)</subject>", RegexOptions.Singleline)]
     private static partial Regex MySubjectRegex();
 }

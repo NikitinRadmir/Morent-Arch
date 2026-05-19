@@ -1,0 +1,70 @@
+﻿<subject>⚠️ Ошибка оплаты брони #{{BookingId}}</subject>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #dc3545;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+        }
+
+        .details {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #dc3545;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Ошибка оплаты</h1>
+        </div>
+        <div class="content">
+            <h2>Здравствуйте, {{CustomerName}}!</h2>
+            <p>К сожалению, не удалось обработать оплату вашей брони.</p>
+            <div class="details">
+                <p><strong>Номер брони:</strong> {{BookingId}}</p>
+                <p><strong>Автомобиль:</strong> {{CarModel}}</p>
+                <p><strong>Причина:</strong> {{ErrorMessage}}</p>
+            </div>
+            <p style="text-align: center;">
+                <a href="{{PaymentLink}}" class="button">🔄 Повторить оплату</a>
+            </p>
+            <p>Если проблема повторяется, свяжитесь с поддержкой.</p>
+        </div>
+    </div>
+</body>
+</html>
