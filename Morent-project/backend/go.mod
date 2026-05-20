@@ -2,6 +2,8 @@ module morent-backend
 
 go 1.24.0
 
+replace morent-events => ../../shared/morent-events
+
 require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
@@ -9,12 +11,14 @@ require (
 	github.com/graphql-go/handler v0.2.4
 	github.com/minio/minio-go/v7 v7.0.70
 	github.com/redis/go-redis/v9 v9.7.0
+	github.com/segmentio/kafka-go v0.4.47
 	go.uber.org/fx v1.24.0
 	golang.org/x/crypto v0.46.0
 	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
+	morent-events v0.0.0
 )
 
 require (
@@ -34,6 +38,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect

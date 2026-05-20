@@ -68,8 +68,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: Morent-project/backend/Dockerfile
     restart: always
     env_file:
       - .env
@@ -101,8 +101,15 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: ${REDIS_DB:-0}
       CARS_CACHE_TTL_SEC: ${CARS_CACHE_TTL_SEC:-60}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      KAFKA_TOPIC_USERS: ${KAFKA_TOPIC_USERS:-morent.users}
+      MORENT_COMPANY_NAME: ${MORENT_COMPANY_NAME:-Morent}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - morent-kafka
     ports:
       - "${BACKEND_PORT:-1488}:1488"
 
@@ -117,6 +124,11 @@ services:
       - backend
     ports:
       - "${FRONTEND_PORT:-5173}:80"
+
+networks:
+  morent-kafka:
+    external: true
+    name: kafka_morent-kafka
 
 volumes:
   postgres_data:

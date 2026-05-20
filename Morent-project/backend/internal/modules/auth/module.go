@@ -1,7 +1,11 @@
 package auth
 
 import (
+	"log/slog"
+
+	"morent-backend/internal/config"
 	"morent-backend/internal/handlers"
+	"morent-backend/internal/messaging"
 	"morent-backend/internal/repository"
 	"morent-backend/internal/service"
 
@@ -18,8 +22,17 @@ func NewModule(
 	userRepo *repository.UserRepository,
 	sessionRepo *repository.SessionRepository,
 	logService *service.LogService,
+	events messaging.UserEventPublisher,
+	cfg *config.Config,
+	log *slog.Logger,
 ) Outputs {
-	authService := service.NewAuthService(userRepo, sessionRepo)
+	authService := service.NewAuthService(
+		userRepo,
+		sessionRepo,
+		events,
+		cfg.MorentCompanyName,
+		log,
+	)
 	authHandler := handlers.NewAuthHandler(authService, logService)
 
 	return Outputs{

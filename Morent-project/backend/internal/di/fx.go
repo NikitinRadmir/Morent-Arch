@@ -8,6 +8,8 @@ import (
 	"morent-backend/internal/cache"
 	"morent-backend/internal/config"
 	"morent-backend/internal/handlers"
+	"morent-backend/internal/messaging"
+	kafkamsg "morent-backend/internal/messaging/kafka"
 	applog "morent-backend/internal/logger"
 	adminapp "morent-backend/internal/modules/admin/app"
 	adminmodule "morent-backend/internal/modules/admin"
@@ -48,11 +50,13 @@ var Module = fx.Options(
 		adminmodule.NewModule,
 		handlers.NewMediaHandler,
 		provideGeneratorClient,
+		provideUserEventPublisher,
 		handlers.NewPasswordHandler,
 		buildContainer,
 	),
 	fx.Invoke(setSlogDefault),
 	fx.Invoke(registerRedisHook),
+	fx.Invoke(registerKafkaHook),
 )
 
 func provideCarCache(cfg *config.Config, rdb *redis.Client) *cache.CarCache {
@@ -80,6 +84,33 @@ func provideConfig() (*config.Config, error) {
 
 func provideGeneratorClient(cfg *config.Config) *service.GeneratorClient {
 	return service.NewGeneratorClient(cfg.GeneratorBaseURL)
+}
+
+func provideUserEventPublisher(cfg *config.Config, log *slog.Logger) messaging.UserEventPublisher {
+	if !cfg.KafkaEnabled {
+		return messaging.NoopPublisher{}
+	}
+	pub, err := kafkamsg.NewPublisher(cfg.KafkaBrokers, cfg.KafkaTopicUsers, cfg.MorentCompanyName, log)
+	if err != nil {
+		log.Warn("kafka publisher disabled", "error", err)
+		return messaging.NoopPublisher{}
+	}
+	return pub
+}
+
+func registerKafkaHook(lc fx.Lifecycle, cfg *config.Config, pub messaging.UserEventPublisher) {
+	if !cfg.KafkaEnabled {
+		return
+	}
+	closer, ok := pub.(interface{ Close() error })
+	if !ok {
+		return
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return closer.Close()
+		},
+	})
 }
 
 type containerParams struct {

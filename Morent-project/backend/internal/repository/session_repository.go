@@ -22,6 +22,18 @@ func (r *SessionRepository) Create(userID uint, token string) error {
 	return r.db.Create(&session).Error
 }
 
+func (r *SessionRepository) GetLatestByUserID(userID uint) (*models.Session, error) {
+	var session models.Session
+	err := r.db.Where("user_id = ?", userID).Order("created_at DESC").First(&session).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (r *SessionRepository) GetByToken(token string) (*models.Session, error) {
 	var session models.Session
 	err := r.db.Preload("User").Where("token = ?", token).First(&session).Error

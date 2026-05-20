@@ -36,6 +36,11 @@ type Config struct {
 	RedisPassword         string
 	RedisDB               int
 	CarsCacheTTLSeconds   int
+
+	KafkaEnabled      bool
+	KafkaBrokers      string
+	KafkaTopicUsers   string
+	MorentCompanyName string
 }
 
 // LoadFromEnv читает конфигурацию из окружения. Файл config.json не используется.
@@ -65,7 +70,11 @@ func LoadFromEnv() (*Config, error) {
 		RedisPassword:        getEnv("REDIS_PASSWORD", ""),
 		RedisDB:              getEnvInt("REDIS_DB", 0),
 		CarsCacheTTLSeconds:  getEnvInt("CARS_CACHE_TTL_SEC", 60),
+		KafkaBrokers:         getEnv("KAFKA_BROKERS", ""),
+		KafkaTopicUsers:      getEnv("KAFKA_TOPIC_USERS", "morent.users"),
+		MorentCompanyName:    getEnv("MORENT_COMPANY_NAME", "Morent"),
 	}
+	cfg.KafkaEnabled = getEnvBool("KAFKA_ENABLED", cfg.KafkaBrokers != "")
 	cfg.MinioUseSSL = getEnvBool("MINIO_USE_SSL", false)
 	cfg.SessionCookieSecure = getEnvBool("SESSION_COOKIE_SECURE", false)
 
