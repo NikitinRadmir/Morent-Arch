@@ -3,13 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"morent-backend/internal/config"
 	"morent-backend/internal/models"
 	favoritesdto "morent-backend/internal/modules/favorites/httpdto"
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 )
 
@@ -17,13 +18,15 @@ type FavoriteHandler struct {
 	authService     *service.AuthService
 	favoriteService *service.FavoriteService
 	logService      *service.LogService
+	cfg             *config.Config
 }
 
-func NewFavoriteHandler(authService *service.AuthService, favoriteService *service.FavoriteService, logService *service.LogService) *FavoriteHandler {
+func NewFavoriteHandler(authService *service.AuthService, favoriteService *service.FavoriteService, logService *service.LogService, cfg *config.Config) *FavoriteHandler {
 	return &FavoriteHandler{
 		authService:     authService,
 		favoriteService: favoriteService,
 		logService:      logService,
+		cfg:             cfg,
 	}
 }
 
@@ -150,27 +153,5 @@ func (h *FavoriteHandler) Remove(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *FavoriteHandler) authenticate(r *http.Request) (*models.User, error) {
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
-	if token == "" {
-		cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
-		if cookieName == "" {
-			cookieName = "morent_session"
-		}
-		cookie, err := r.Cookie(cookieName)
-		if err == nil && cookie != nil {
-			token = strings.TrimSpace(cookie.Value)
-		}
-	}
-	if token == "" {
-		return nil, service.ErrInvalidToken
-	}
-	lower := strings.ToLower(token)
-	if strings.HasPrefix(lower, "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	user, err := h.authService.GetUserByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
+	return common.Authenticate(h.authService, h.cfg, r)
 }

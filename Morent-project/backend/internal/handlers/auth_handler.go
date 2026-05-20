@@ -4,22 +4,24 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"morent-backend/internal/config"
 	authdto "morent-backend/internal/modules/auth/httpdto"
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 )
 
 type AuthHandler struct {
 	service    *service.AuthService
 	logService *service.LogService
+	cfg        *config.Config
 }
 
-func NewAuthHandler(service *service.AuthService, logService *service.LogService) *AuthHandler {
-	return &AuthHandler{service: service, logService: logService}
+func NewAuthHandler(service *service.AuthService, logService *service.LogService, cfg *config.Config) *AuthHandler {
+	return &AuthHandler{service: service, logService: logService, cfg: cfg}
 }
 
 var authValidator = validator.New()
@@ -326,12 +328,12 @@ func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, token string) {
 	if token == "" {
 		return
 	}
-	cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+	cookieName := h.cfg.SessionCookieName
 	if cookieName == "" {
 		cookieName = "morent_session"
 	}
-	secure := strings.EqualFold(strings.TrimSpace(os.Getenv("SESSION_COOKIE_SECURE")), "true")
-	domain := strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN"))
+	secure := h.cfg.SessionCookieSecure
+	domain := h.cfg.SessionCookieDomain
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    token,
@@ -344,11 +346,11 @@ func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, token string) {
 }
 
 func (h *AuthHandler) clearSessionCookie(w http.ResponseWriter) {
-	cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
+	cookieName := h.cfg.SessionCookieName
 	if cookieName == "" {
 		cookieName = "morent_session"
 	}
-	domain := strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN"))
+	domain := h.cfg.SessionCookieDomain
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    "",
@@ -361,20 +363,5 @@ func (h *AuthHandler) clearSessionCookie(w http.ResponseWriter) {
 }
 
 func (h *AuthHandler) extractToken(r *http.Request) string {
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
-	if token == "" {
-		cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
-		if cookieName == "" {
-			cookieName = "morent_session"
-		}
-		cookie, err := r.Cookie(cookieName)
-		if err == nil && cookie != nil {
-			token = strings.TrimSpace(cookie.Value)
-		}
-	}
-	lower := strings.ToLower(token)
-	if strings.HasPrefix(lower, "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	return token
+	return common.SessionToken(r, h.cfg)
 }

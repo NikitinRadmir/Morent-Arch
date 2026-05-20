@@ -10,20 +10,27 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
+	"morent-backend/internal/config"
 	"morent-backend/internal/models"
 	commentsdto "morent-backend/internal/modules/comments/httpdto"
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 )
 
 type CommentHandler struct {
 	service     *service.CommentService
 	authService *service.AuthService
+	cfg         *config.Config
 }
 
 var commentValidator = validator.New()
 
-func NewCommentHandler(service *service.CommentService, authService *service.AuthService) *CommentHandler {
-	return &CommentHandler{service: service, authService: authService}
+func NewCommentHandler(service *service.CommentService, authService *service.AuthService, cfg *config.Config) *CommentHandler {
+	return &CommentHandler{service: service, authService: authService, cfg: cfg}
+}
+
+func (h *CommentHandler) authenticate(r *http.Request) (*models.User, error) {
+	return common.Authenticate(h.authService, h.cfg, r)
 }
 
 func (h *CommentHandler) GetCarComments(w http.ResponseWriter, r *http.Request) {
@@ -69,19 +76,9 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// authenticate user by token
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
-	if token == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
-		return
-	}
-	lower := strings.ToLower(token)
-	if strings.HasPrefix(lower, "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	user, err := h.authService.GetUserByToken(token)
+	user, err := h.authenticate(r)
 	if err != nil || user == nil {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -132,6 +129,12 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, errAuth := h.authenticate(r)
+	if errAuth != nil || user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 	if len(parts) < 3 {
@@ -146,12 +149,32 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var comment models.Comment
-	if errDecode := json.NewDecoder(r.Body).Decode(&comment); errDecode != nil {
-		http.Error(w, "Invalid request body: "+errDecode.Error(), http.StatusBadRequest)
+	existing, errGet := h.service.GetByID(uint(id))
+	if errGet != nil {
+		common.WriteInternalError(w, "failed to load comment")
 		return
 	}
-	comment.ID = uint(id)
+	if existing == nil {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+	if existing.UserID != user.ID && strings.ToLower(user.Role) != "admin" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	var payload commentsdto.UpdateCommentBody
+	if errDecode := json.NewDecoder(r.Body).Decode(&payload); errDecode != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	comment := *existing
+	if payload.Description != nil {
+		comment.Description = strings.TrimSpace(*payload.Description)
+	}
+	if payload.Rating != nil {
+		comment.Rating = *payload.Rating
+	}
 
 	if errUpdate := h.service.Update(&comment); errUpdate != nil {
 		if errors.Is(errUpdate, gorm.ErrRecordNotFound) {
@@ -172,6 +195,12 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, errAuth := h.authenticate(r)
+	if errAuth != nil || user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 	if len(parts) < 3 {
@@ -186,12 +215,26 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	existing, errGet := h.service.GetByID(uint(id))
+	if errGet != nil {
+		common.WriteInternalError(w, "failed to load comment")
+		return
+	}
+	if existing == nil {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+	if existing.UserID != user.ID && strings.ToLower(user.Role) != "admin" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	if errDelete := h.service.Delete(uint(id)); errDelete != nil {
 		if errors.Is(errDelete, gorm.ErrRecordNotFound) {
 			http.Error(w, "Comment not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Error deleting comment: "+errDelete.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to delete comment")
 		return
 	}
 

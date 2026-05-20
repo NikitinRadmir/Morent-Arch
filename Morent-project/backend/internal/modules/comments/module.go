@@ -1,6 +1,7 @@
 package comments
 
 import (
+	"morent-backend/internal/config"
 	"morent-backend/internal/handlers"
 	"morent-backend/internal/repository"
 	"morent-backend/internal/service"
@@ -18,9 +19,10 @@ func NewModule(
 	commentRepo *repository.CommentRepository,
 	rentalRepo *repository.RentalRepository,
 	authService *service.AuthService,
+	cfg *config.Config,
 ) Outputs {
 	commentService := service.NewCommentService(commentRepo, rentalRepo)
-	commentHandler := handlers.NewCommentHandler(commentService, authService)
+	commentHandler := handlers.NewCommentHandler(commentService, authService, cfg)
 
 	return Outputs{
 		Service: commentService,

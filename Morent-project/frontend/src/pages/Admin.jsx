@@ -13,7 +13,7 @@ const uploadImage = async (file) => {
     if (!file) return '';
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/media/upload`, {
+    const res = await fetch(`${API_BASE}/Admin/Media/Upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -163,7 +163,7 @@ const Admin = () => {
     };
 
     const handleCreateCar = async (payload) => {
-        await fetchJson(`${API_BASE}/cars`, {
+        await fetchJson(`${API_BASE}/Admin/Cars`, {
             method: 'POST',
             headers: jsonHeaders,
             body: JSON.stringify(payload),
@@ -172,7 +172,7 @@ const Admin = () => {
     };
 
     const handleUpdateCar = async (payload) => {
-        await fetchJson(`${API_BASE}/cars/${payload.id}`, {
+        await fetchJson(`${API_BASE}/Admin/Cars/${payload.id}`, {
             method: 'PUT',
             headers: jsonHeaders,
             body: JSON.stringify(payload),
@@ -181,7 +181,7 @@ const Admin = () => {
     };
 
     const handleDeleteCar = async (id) => {
-        await fetchJson(`${API_BASE}/cars/${id}`, { method: 'DELETE', headers: jsonHeaders });
+        await fetchJson(`${API_BASE}/Admin/Cars/${id}`, { method: 'DELETE', headers: jsonHeaders });
         await loadTab('cars');
     };
 

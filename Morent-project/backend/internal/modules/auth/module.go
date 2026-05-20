@@ -33,7 +33,7 @@ func NewModule(
 		cfg.MorentCompanyName,
 		log,
 	)
-	authHandler := handlers.NewAuthHandler(authService, logService)
+	authHandler := handlers.NewAuthHandler(authService, logService, cfg)
 
 	return Outputs{
 		Service: authService,

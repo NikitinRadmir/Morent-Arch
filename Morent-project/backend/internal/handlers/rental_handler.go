@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"morent-backend/internal/config"
 	"morent-backend/internal/models"
 	rentalsdto "morent-backend/internal/modules/rentals/httpdto"
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 )
 
@@ -17,15 +19,17 @@ type RentalHandler struct {
 	authService   *service.AuthService
 	rentalService *service.RentalService
 	logService    *service.LogService
+	cfg           *config.Config
 }
 
 var rentalValidator = validator.New()
 
-func NewRentalHandler(authService *service.AuthService, rentalService *service.RentalService, logService *service.LogService) *RentalHandler {
+func NewRentalHandler(authService *service.AuthService, rentalService *service.RentalService, logService *service.LogService, cfg *config.Config) *RentalHandler {
 	return &RentalHandler{
 		authService:   authService,
 		rentalService: rentalService,
 		logService:    logService,
+		cfg:           cfg,
 	}
 }
 
@@ -89,7 +93,7 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rental, errCreate := h.rentalService.CreateRental(user.ID, req.CarID, start, end, req.TotalPrice)
+	rental, errCreate := h.rentalService.CreateRental(user.ID, req.CarID, start, end)
 	if errCreate != nil {
 		status := http.StatusInternalServerError
 		if errCreate == service.ErrCarNotFound || errCreate == service.ErrInvalidRentalPeriod || errCreate == service.ErrCarAlreadyBooked {
@@ -153,17 +157,5 @@ func (h *RentalHandler) BookedDates(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RentalHandler) authenticate(r *http.Request) (*models.User, error) {
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
-	if token == "" {
-		return nil, service.ErrInvalidToken
-	}
-	lower := strings.ToLower(token)
-	if strings.HasPrefix(lower, "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	user, err := h.authService.GetUserByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
+	return common.Authenticate(h.authService, h.cfg, r)
 }

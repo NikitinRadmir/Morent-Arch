@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"morent-backend/internal/config"
 	"morent-backend/internal/service"
 )
 
@@ -32,38 +33,17 @@ func WrapCORS(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func WithAdmin(auth *service.AuthService, next http.HandlerFunc) http.HandlerFunc {
+func WithAdmin(auth *service.AuthService, cfg *config.Config, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := extractTokenFromRequest(r)
-		lower := strings.ToLower(token)
-		if strings.HasPrefix(lower, "bearer ") {
-			token = strings.TrimSpace(token[7:])
-		}
-		if token == "" {
-			http.Error(w, "missing token", http.StatusUnauthorized)
+		user, err := Authenticate(auth, cfg, r)
+		if err != nil || user == nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		user, err := auth.GetUserByToken(token)
-		if err != nil || user == nil || strings.ToLower(strings.TrimSpace(user.Role)) != "admin" {
+		if strings.ToLower(strings.TrimSpace(user.Role)) != "admin" {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		next(w, r)
 	}
-}
-
-func extractTokenFromRequest(r *http.Request) string {
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
-	if token != "" {
-		return token
-	}
-	cookieName := strings.TrimSpace(os.Getenv("SESSION_COOKIE_NAME"))
-	if cookieName == "" {
-		cookieName = "morent_session"
-	}
-	cookie, err := r.Cookie(cookieName)
-	if err == nil && cookie != nil {
-		return strings.TrimSpace(cookie.Value)
-	}
-	return ""
 }

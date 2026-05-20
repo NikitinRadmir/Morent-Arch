@@ -1,6 +1,7 @@
 package favorites
 
 import (
+	"morent-backend/internal/config"
 	"morent-backend/internal/handlers"
 	"morent-backend/internal/repository"
 	"morent-backend/internal/service"
@@ -19,9 +20,10 @@ func NewModule(
 	carRepo *repository.CarRepository,
 	authService *service.AuthService,
 	logService *service.LogService,
+	cfg *config.Config,
 ) Outputs {
 	favoriteService := service.NewFavoriteService(favoriteRepo, carRepo)
-	favoriteHandler := handlers.NewFavoriteHandler(authService, favoriteService, logService)
+	favoriteHandler := handlers.NewFavoriteHandler(authService, favoriteService, logService, cfg)
 
 	return Outputs{
 		Service: favoriteService,
