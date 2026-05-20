@@ -2,6 +2,7 @@ package main
 
 import (
 	//"user-system/app/token"
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,9 +11,12 @@ import (
 	//"strings"
 
 	"user-system/app/di"
+	kafkamsg "user-system/app/messaging/kafka"
 	//"user-system/app/graphql/generated"
 	"user-system/app/models"
+	"user-system/app/repositories"
 	"user-system/app/routes"
+	"user-system/app/service"
 
 	//"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/gin-gonic/gin"
@@ -137,6 +141,8 @@ func main() {
 	)
 	log.Println(" Routes setup completed")
 
+	startKafkaConsumer(db)
+
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8080"
@@ -180,6 +186,7 @@ func runMigrations(db *gorm.DB, clearDB bool) error {
 		&models.Permission{},
 		&models.UserRole{},
 		&models.RolePermission{},
+		&models.ProcessedEvent{},
 	}
 
 	for _, model := range modelsToMigrate {
@@ -191,4 +198,39 @@ func runMigrations(db *gorm.DB, clearDB bool) error {
 	}
 
 	return nil
+}
+
+func startKafkaConsumer(db *gorm.DB) {
+	enabled := os.Getenv("KAFKA_ENABLED")
+	if enabled == "false" || enabled == "0" {
+		log.Println(" Kafka consumer disabled (KAFKA_ENABLED=false)")
+		return
+	}
+	brokers := os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		log.Println(" Kafka consumer disabled (KAFKA_BROKERS is empty)")
+		return
+	}
+
+	syncService := service.NewMorentSyncService(
+		db,
+		repositories.NewUserRepository(db),
+		repositories.NewCompanyRepository(db),
+		repositories.NewRoleRepository(db),
+		repositories.NewProcessedEventRepository(db),
+		os.Getenv("MORENT_COMPANY_NAME"),
+	)
+
+	consumer := kafkamsg.NewConsumer(
+		brokers,
+		os.Getenv("KAFKA_TOPIC_USERS"),
+		os.Getenv("KAFKA_CONSUMER_GROUP"),
+		syncService,
+	)
+
+	go func() {
+		if err := consumer.Run(context.Background()); err != nil {
+			log.Printf(" Kafka consumer stopped: %v", err)
+		}
+	}()
 }

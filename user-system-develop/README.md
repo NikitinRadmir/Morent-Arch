@@ -8,7 +8,7 @@
 - Управление пользователями (CRUD)
 - Управление ролями и правами доступа (RBAC)
 - Управление компаниями
-- Асинхронные уведомления через RabbitMQ
+- Синхронизация пользователей из Morent через Kafka
 - RPC вызовы
 
 ## API Документация
@@ -55,7 +55,7 @@ docker-compose down
 make build
 ### 2. Запустить Docker контейнеры
 make docker-up
-### 3. Запустить локально (требуется PostgreSQL и RabbitMQ)
+### 3. Запустить локально (требуется PostgreSQL; для Kafka — `infra/kafka`)
 make run
 ### 4. Остановить
 make docker-down

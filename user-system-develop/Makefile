@@ -12,7 +12,6 @@ GO_FILES = $(shell find ./app -name "*.go" -type f)
 DOCKER_COMPOSE = docker-compose.yml
 DOCKER_APP_CONTAINER = user-system-api
 DOCKER_DB_CONTAINER = user-system-db
-DOCKER_RABBITMQ_CONTAINER = user-system-rabbitmq
 
 # PostgreSQL
 DB_USER ?= postgres
@@ -21,12 +20,6 @@ DB_NAME ?= user_system_db
 DB_HOST ?= localhost
 DB_PORT ?= 5432
 DB_SSL ?= disable
-
-# RabbitMQ
-RABBITMQ_USER ?= guest
-RABBITMQ_PASSWORD ?= guest
-RABBITMQ_HOST ?= localhost
-RABBITMQ_PORT ?= 5672
 
 # Приложение
 APP_PORT ?= 8080

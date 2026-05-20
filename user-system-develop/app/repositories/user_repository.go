@@ -1,8 +1,9 @@
 package repositories
 
 import (
-	"user-system/app/models"
+	"errors"
 	"time"
+	"user-system/app/models"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -12,6 +13,7 @@ type UserRepository interface {
 	FindAll(limit, offset int, companyID uuid.UUID, isActive *bool) ([]models.User, error)
 	FindByID(id uuid.UUID) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
+	FindByMorentUserID(morentUserID uint) (*models.User, error)
 	FindByEmailAndCompany(email string, companyID uuid.UUID) (*models.User, error)
 	Create(user *models.User) error
 	Update(user *models.User) error
@@ -61,6 +63,18 @@ func (r *userRepository) FindByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.Preload("Company").Where("email = ?", email).First(&user).Error
 	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) FindByMorentUserID(morentUserID uint) (*models.User, error) {
+	var user models.User
+	err := r.db.Preload("Company").Where("morent_user_id = ?", morentUserID).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &user, nil

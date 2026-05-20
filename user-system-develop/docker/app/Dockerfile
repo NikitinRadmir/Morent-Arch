@@ -1,17 +1,16 @@
 FROM golang:1.23-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build/user-system-develop
 
-# Копируем весь код
-COPY . .
-
-# Скачиваем зависимости и создаем go.sum
+COPY shared/morent-events /build/shared/morent-events
+COPY user-system-develop/go.mod user-system-develop/go.sum ./
 RUN go mod download
-RUN go mod tidy
 
-# Собираем приложение
+COPY user-system-develop/ .
 RUN go build -o main ./app
 
+FROM alpine:3.18
+WORKDIR /app
+COPY --from=builder /build/user-system-develop/main .
 EXPOSE 8080
-
-CMD ["./main"]
+CMD ["./main", "--clear-db=false"]
