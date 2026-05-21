@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"time"
 	"user-system/app/exceptions"
 
@@ -138,11 +138,11 @@ func (s *userService) CreateUser(req dto.CreateUserRequest, createdBy uuid.UUID)
 	if company.OwnerID == nil {
 		company.OwnerID = &user.ID
 		if err := s.companyRepo.Update(company); err != nil {
-			log.Printf("Failed to set company owner: %v", err)
+			slog.Warn("failed to set company owner", "error", err)
 		}
 
 		if err := s.assignSuperAdminRole(user); err != nil {
-			log.Printf("Failed to assign super admin role: %v", err)
+			slog.Warn("failed to assign super admin role", "error", err)
 		}
 	}
 
@@ -255,7 +255,7 @@ func (s *userService) DeleteUser(id, deletedBy uuid.UUID) error {
 		s.userRepo.Update(user)
 	}
 
-	log.Printf("User %s soft deleted by %s", id, deletedBy)
+	slog.Info("user soft deleted", "user_id", id, "deleted_by", deletedBy)
 	return nil
 }
 
@@ -328,7 +328,7 @@ func (s *userService) Authenticate(email, password string) (*models.User, error)
 	now := time.Now()
 	user.LastLogin = &now
 	if err := s.userRepo.Update(user); err != nil {
-		log.Printf("Failed to update last login: %v", err)
+		slog.Warn("failed to update last login", "user_id", user.ID, "error", err)
 	}
 
 	return user, nil

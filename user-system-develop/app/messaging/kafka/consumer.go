@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
@@ -41,13 +41,13 @@ func NewConsumer(brokers, topic, groupID string, sync *service.MorentSyncService
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	log.Printf("Kafka consumer started (topic=%s)", c.reader.Config().Topic)
+	slog.Info("kafka consumer started", "topic", c.reader.Config().Topic)
 
 	go func() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 		<-stop
-		log.Println("Kafka consumer shutdown signal received")
+		slog.Info("kafka consumer shutdown signal received")
 		_ = c.reader.Close()
 	}()
 
@@ -60,19 +60,19 @@ func (c *Consumer) Run(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			log.Printf("kafka fetch error: %v", err)
+			slog.Error("kafka fetch error", "error", err)
 			time.Sleep(time.Second)
 			continue
 		}
 
 		if err := c.sync.Handle(msg.Value); err != nil {
-			log.Printf("kafka event handle error (offset=%d): %v", msg.Offset, err)
+			slog.Error("kafka event handle error", "offset", msg.Offset, "error", err)
 			// не коммитим — повторная обработка
 			continue
 		}
 
 		if err := c.reader.CommitMessages(ctx, msg); err != nil {
-			log.Printf("kafka commit error: %v", err)
+			slog.Error("kafka commit error", "error", err)
 		}
 	}
 }

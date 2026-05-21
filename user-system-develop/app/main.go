@@ -5,18 +5,20 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	//"strings"
 
 	"user-system/app/di"
 	kafkamsg "user-system/app/messaging/kafka"
+	"user-system/app/middleware"
 	//"user-system/app/graphql/generated"
 	"user-system/app/models"
 	"user-system/app/repositories"
 	"user-system/app/routes"
 	"user-system/app/service"
+	"user-system/pkg/logger"
 
 	//"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/gin-gonic/gin"
@@ -27,11 +29,14 @@ import (
 )
 
 func main() {
+	log := logger.New()
+	slog.SetDefault(log)
+
 	defaultClearDB := false
 	if envValue := os.Getenv("CLEAR_DB_ON_START"); envValue != "" {
 		parsedValue, err := strconv.ParseBool(envValue)
 		if err != nil {
-			log.Printf("Invalid CLEAR_DB_ON_START value %q, using default false", envValue)
+			log.Warn("invalid CLEAR_DB_ON_START, using default false", "value", envValue, "error", err)
 		} else {
 			defaultClearDB = parsedValue
 		}
@@ -42,13 +47,14 @@ func main() {
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
-		log.Println(" .env not found, using docker environment")
+		log.Info("env file not found, using environment variables")
 	}
 
 	requiredEnvVars := []string{"DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "JWT_SECRET"}
 	for _, envVar := range requiredEnvVars {
 		if value := os.Getenv(envVar); value == "" {
-			log.Fatalf("Missing required environment variable: %s", envVar)
+			log.Error("missing required environment variable", "name", envVar)
+			os.Exit(1)
 		}
 	}
 
@@ -64,71 +70,51 @@ func main() {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("DB connection failed: %v", err)
+		log.Error("database connection failed", "error", err)
+		os.Exit(1)
 	}
-	log.Println(" Connected to Postgres")
+	log.Info("connected to postgres")
 
-	log.Println(" Running database migrations...")
+	log.Info("running database migrations")
 	if *clearDB {
-		log.Println(" Clearing database...")
+		log.Info("clearing database before migrations")
 	}
 
-	err = runMigrations(db, *clearDB)
+	err = runMigrations(db, *clearDB, log)
 	if err != nil {
-		log.Fatalf("Migration failed: %v", err)
+		log.Error("migration failed", "error", err)
+		os.Exit(1)
 	}
-	log.Println(" Database migrations completed")
+	log.Info("database migrations completed")
 
 	if *migrateOnly {
-		log.Println(" Migration completed successfully (--migrate-only flag set)")
+		log.Info("migrate-only mode, exiting")
 		return
 	}
 
-	log.Println(" Initializing controllers...")
+	log.Info("initializing controllers")
 	userController := di.InitUserController(db)
 	roleController := di.InitRoleController(db)
 	companyController := di.InitCompanyController(db)
 	rolePermissionController := di.InitRolePermissionController(db)
 	authController := di.InitAuthController(db)
-	log.Println(" Controllers initialized successfully")
+	log.Info("controllers initialized")
 
-	// ========== НАЧАЛО: JSON-RPC инициализация ==========
-	log.Println(" Initializing JSON-RPC services...")
+	log.Info("initializing json-rpc services")
 	rpcServer := di.InitRPCServer(db)
-	log.Println(" JSON-RPC services initialized successfully")
-	// ========== КОНЕЦ: JSON-RPC инициализация ==========
+	log.Info("json-rpc services initialized")
 
-	// ========== НАЧАЛО: GraphQL инициализация через Wire ==========
-	log.Println(" Initializing GraphQL services...")
+	log.Info("initializing graphql services")
 	//graphQLResolver := di.InitGraphQLResolver(db)
 	//tokenService := token.NewTokenService(os.Getenv("JWT_SECRET"))
 	//graphqlServer := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: graphQLResolver}))
-	log.Println(" GraphQL services initialized successfully")
-	// ========== КОНЕЦ: GraphQL инициализация ==========
+	log.Info("graphql services initialized")
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(middleware.RequestLog(log))
+	router.Use(middleware.Recover(log))
 
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	// ========== GraphQL Middleware ==========
-	//router.Use(func(c *gin.Context) {
-	//	if c.Request.URL.Path == "/query" || c.Request.URL.Path == "/graphql" {
-	//		authHeader := c.GetHeader("Authorization")
-	//		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-	//			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	//			claims, err := tokenService.ValidateToken(tokenStr)
-	//			if err == nil {
-	//				userID, _ := uuid.Parse(claims.UserId)
-	//				c.Set("user_id", userID)
-	//			}
-	//		}
-	//	}
-	//	c.Next()
-	//})
-	// ========== КОНЕЦ: GraphQL Middleware ==========
-
-	log.Println(" Setting up routes...")
+	log.Info("setting up routes")
 	routes.SetupRoutes(
 		router,
 		userController,
@@ -139,31 +125,29 @@ func main() {
 		rpcServer,
 		nil, //TODO: передать инициализацию
 	)
-	log.Println(" Routes setup completed")
+	log.Info("routes configured")
 
-	startKafkaConsumer(db)
+	startKafkaConsumer(db, log)
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf(" Server running at http://localhost:%s", port)
-	log.Println(" Swagger UI: http://localhost:" + port + "/swagger/index.html")
-	log.Println(" Available endpoints:")
-	log.Println("  POST   /api/auth/register")
-	log.Println("  POST   /api/auth/login")
-	log.Println("  GET    /health")
-	log.Println("  POST   /api/companies (public)")
+	log.Info("server starting",
+		"addr", "http://localhost:"+port,
+		"swagger", "http://localhost:"+port+"/swagger/index.html",
+	)
 
 	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		log.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
 
-func runMigrations(db *gorm.DB, clearDB bool) error {
+func runMigrations(db *gorm.DB, clearDB bool, log *slog.Logger) error {
 	if clearDB {
-		log.Println(" Clearing existing tables...")
+		log.Info("dropping existing tables")
 
 		db.Exec("DROP INDEX IF EXISTS idx_companies_domain CASCADE")
 		db.Exec("DROP INDEX IF EXISTS uix_companies_domain CASCADE")
@@ -176,7 +160,7 @@ func runMigrations(db *gorm.DB, clearDB bool) error {
 		db.Exec("DROP TABLE IF EXISTS permissions CASCADE")
 		db.Exec("DROP TABLE IF EXISTS companies CASCADE")
 
-		log.Println(" All tables dropped")
+		log.Info("tables dropped")
 	}
 
 	modelsToMigrate := []interface{}{
@@ -194,21 +178,21 @@ func runMigrations(db *gorm.DB, clearDB bool) error {
 		if err != nil {
 			return fmt.Errorf("failed to migrate %T: %v", model, err)
 		}
-		log.Printf("  ✓ Table created: %T", model)
+		log.Info("table migrated", "model", fmt.Sprintf("%T", model))
 	}
 
 	return nil
 }
 
-func startKafkaConsumer(db *gorm.DB) {
+func startKafkaConsumer(db *gorm.DB, log *slog.Logger) {
 	enabled := os.Getenv("KAFKA_ENABLED")
 	if enabled == "false" || enabled == "0" {
-		log.Println(" Kafka consumer disabled (KAFKA_ENABLED=false)")
+		log.Info("kafka consumer disabled", "reason", "KAFKA_ENABLED=false")
 		return
 	}
 	brokers := os.Getenv("KAFKA_BROKERS")
 	if brokers == "" {
-		log.Println(" Kafka consumer disabled (KAFKA_BROKERS is empty)")
+		log.Info("kafka consumer disabled", "reason", "KAFKA_BROKERS empty")
 		return
 	}
 
@@ -230,7 +214,7 @@ func startKafkaConsumer(db *gorm.DB) {
 
 	go func() {
 		if err := consumer.Run(context.Background()); err != nil {
-			log.Printf(" Kafka consumer stopped: %v", err)
+			log.Error("kafka consumer stopped", "error", err)
 		}
 	}()
 }

@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -222,7 +222,7 @@ func (s *MorentSyncService) ensureCompany(name string) (*models.Company, error) 
 		}
 	}
 	if err := s.roleRepo.CreateSystemRoles(company.ID); err != nil {
-		log.Printf("warn: create system roles: %v", err)
+		slog.Warn("create system roles failed", "company_id", company.ID, "error", err)
 	}
 	return company, nil
 }
