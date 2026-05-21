@@ -2,9 +2,12 @@ package migrations
 
 import (
 	"fmt"
-	"gorm.io/gorm"
+	"os"
+	"strings"
+
 	"golang.org/x/crypto/bcrypt"
 	"morent-backend/internal/models"
+	"gorm.io/gorm"
 )
 
 func RunMigrations(db *gorm.DB) error {
@@ -21,7 +24,12 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("ошибка выполнения миграций: %v", errAutoMigrate)
 	}
 
-	// Создание стокового админа
+	// Стоковый админ только при явном флаге (dev).
+	if !strings.EqualFold(strings.TrimSpace(os.Getenv("SEED_ADMIN")), "true") {
+		fmt.Println("Миграции выполнены успешно")
+		return nil
+	}
+
 	adminEmail := "admin@morent.com"
 	var existingAdmin models.User
 	if err := db.Where("email = ?", adminEmail).First(&existingAdmin).Error; err != nil {

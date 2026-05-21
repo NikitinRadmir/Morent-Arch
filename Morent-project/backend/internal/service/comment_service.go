@@ -8,6 +8,7 @@ import (
 
 type CommentRepository interface {
 	GetByCarID(carID int) ([]models.Comment, error)
+	GetByID(id uint) (*models.Comment, error)
 	CreateComment(comment *models.Comment) error
 	UpdateComment(comment *models.Comment) error
 	DeleteComment(id uint) error
@@ -28,6 +29,10 @@ func NewCommentService(repo CommentRepository, rentalRepo CommentRentalRepositor
 
 func (s *CommentService) GetByCarID(carID int) ([]models.Comment, error) {
 	return s.repo.GetByCarID(carID)
+}
+
+func (s *CommentService) GetByID(id uint) (*models.Comment, error) {
+	return s.repo.GetByID(id)
 }
 
 func (s *CommentService) UserCanComment(userID, carID uint) (bool, error) {

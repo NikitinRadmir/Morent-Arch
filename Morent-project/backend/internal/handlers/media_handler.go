@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -14,6 +15,13 @@ import (
 	"morent-backend/internal/storage"
 )
 
+var allowedUploadMIME = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
 type MediaHandler struct {
 	cfg     *config.Config
 	storage *storage.MinioStorage
@@ -23,20 +31,17 @@ func NewMediaHandler(cfg *config.Config, storage *storage.MinioStorage) *MediaHa
 	return &MediaHandler{cfg: cfg, storage: storage}
 }
 
-// Upload принимает multipart/form-data с полем "file" и загружает его в MinIO.
-// Возвращает JSON: { "url": "<public-url>" }.
 func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Ограничим размер запроса (например, 20 МБ).
 	const maxSize = 20 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 
 	if err := r.ParseMultipartForm(maxSize); err != nil {
-		http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "invalid multipart form", http.StatusBadRequest)
 		return
 	}
 
@@ -47,32 +52,57 @@ func (h *MediaHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	name := uuid.NewString() + ext
-
-	// Определяем размер; если неизвестен, читаем в буфер.
-	var reader io.Reader = file
-	var size int64 = header.Size
-	if size <= 0 {
-		data, err := io.ReadAll(file)
-		if err != nil {
-			http.Error(w, "failed to read file: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		size = int64(len(data))
-		reader = strings.NewReader(string(data))
+	data, err := io.ReadAll(io.LimitReader(file, maxSize))
+	if err != nil {
+		http.Error(w, "failed to read file", http.StatusBadRequest)
+		return
+	}
+	if len(data) == 0 {
+		http.Error(w, "empty file", http.StatusBadRequest)
+		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	sniffLen := len(data)
+	if sniffLen > 512 {
+		sniffLen = 512
+	}
+	contentType := http.DetectContentType(data[:sniffLen])
+	if !allowedUploadMIME[contentType] {
+		http.Error(w, "unsupported file type", http.StatusBadRequest)
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	switch contentType {
+	case "image/jpeg":
+		if ext != ".jpg" && ext != ".jpeg" {
+			ext = ".jpg"
+		}
+	case "image/png":
+		if ext != ".png" {
+			ext = ".png"
+		}
+	case "image/webp":
+		if ext != ".webp" {
+			ext = ".webp"
+		}
+	case "image/gif":
+		if ext != ".gif" {
+			ext = ".gif"
+		}
+	}
+	name := uuid.NewString() + ext
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	url, err := h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, name, reader, size, header.Header.Get("Content-Type"))
+	url, err := h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, name, bytes.NewReader(data), int64(len(data)), contentType)
 	if err != nil {
-		http.Error(w, "upload failed: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "upload failed", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{"url":"%s"}`, url)
+	_ = json.NewEncoder(w).Encode(map[string]string{"url": url})
 }

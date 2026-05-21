@@ -1,6 +1,9 @@
 package graphql
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/graphql-go/graphql"
 	"morent-backend/internal/di"
 	"morent-backend/internal/models"
@@ -63,9 +66,9 @@ func NewSchema(c *di.Container) (graphql.Schema, error) {
 					"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.ID)},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					idVal, _ := p.Args["id"].(string)
-					if idVal == "" {
-						return nil, nil
+					idVal, ok := p.Args["id"].(string)
+					if !ok || strings.TrimSpace(idVal) == "" {
+						return nil, fmt.Errorf("invalid car id")
 					}
 					// id уже парсится в CarService как int
 					car, err := c.CarService.GetByIDString(idVal)

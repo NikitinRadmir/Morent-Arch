@@ -19,6 +19,18 @@ func (r *CommentRepository) ListAll() ([]models.Comment, error) {
 	return comments, err
 }
 
+func (r *CommentRepository) GetByID(id uint) (*models.Comment, error) {
+	var comment models.Comment
+	err := r.db.First(&comment, id).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &comment, nil
+}
+
 func (r *CommentRepository) GetByCarID(carID int) ([]models.Comment, error) {
 	var comments []models.Comment
 	errFind := r.db.Where("car_id = ?", carID).Order("created_at DESC").Find(&comments).Error
