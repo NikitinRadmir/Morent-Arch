@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
-import { useBank } from '../context/BankContext';
+import { BANK_UNAVAILABLE_MSG } from '../constants';
 
 const BankDeposit = () => {
-  const navigate = useNavigate();
-  const { deposit } = useBank();
   const [amount, setAmount] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const result = deposit(amount);
-    if (!result.ok) {
-      toast.error(result.message);
+    if (!amount || Number(amount) <= 0) {
+      toast.error('Укажите корректную сумму');
       return;
     }
-    toast.success(result.message);
-    navigate('/bank');
+    toast.error(BANK_UNAVAILABLE_MSG);
   };
 
   return (

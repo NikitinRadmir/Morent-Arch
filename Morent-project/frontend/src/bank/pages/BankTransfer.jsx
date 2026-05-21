@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { useBank } from '../context/BankContext';
+import { BANK_UNAVAILABLE_MSG } from '../constants';
 
 const BankTransfer = () => {
-  const navigate = useNavigate();
-  const { transfer } = useBank();
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [confirmed, setConfirmed] = useState(false);
@@ -18,13 +16,11 @@ const BankTransfer = () => {
       toast.error('Подтвердите перевод');
       return;
     }
-    const result = transfer(amount);
-    if (!result.ok) {
-      toast.error(result.message);
+    if (!phone.trim() || !amount || Number(amount) <= 0) {
+      toast.error('Заполните телефон и сумму');
       return;
     }
-    toast.success(result.message);
-    navigate('/bank');
+    toast.error(BANK_UNAVAILABLE_MSG);
   };
 
   return (

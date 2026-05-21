@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { useBank } from '../context/BankContext';
+import { BANK_UNAVAILABLE_MSG } from '../constants';
 
 const BankLogin = () => {
-  const navigate = useNavigate();
-  const { login } = useBank();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
@@ -17,9 +15,7 @@ const BankLogin = () => {
       toast.error('Заполните телефон и пароль');
       return;
     }
-    login(phone);
-    toast.success('Вы вошли в Morent Bank');
-    navigate('/bank');
+    toast.error(BANK_UNAVAILABLE_MSG);
   };
 
   return (

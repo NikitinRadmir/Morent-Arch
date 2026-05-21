@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { useBank } from '../context/BankContext';
+import { BANK_UNAVAILABLE_MSG } from '../constants';
 
 const BankRegister = () => {
-  const navigate = useNavigate();
-  const { register } = useBank();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -22,9 +20,7 @@ const BankRegister = () => {
       toast.error('Пароли не совпадают');
       return;
     }
-    register(phone);
-    toast.success('Регистрация завершена');
-    navigate('/bank');
+    toast.error(BANK_UNAVAILABLE_MSG);
   };
 
   return (

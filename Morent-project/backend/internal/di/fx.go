@@ -14,6 +14,7 @@ import (
 	adminapp "morent-backend/internal/modules/admin/app"
 	adminmodule "morent-backend/internal/modules/admin"
 	authmodule "morent-backend/internal/modules/auth"
+	bankmodule "morent-backend/internal/modules/bank"
 	carsmodule "morent-backend/internal/modules/cars"
 	commentsmodule "morent-backend/internal/modules/comments"
 	favoritesmodule "morent-backend/internal/modules/favorites"
@@ -44,6 +45,7 @@ var Module = fx.Options(
 		repository.NewRentalRepository,
 		carsmodule.NewModule,
 		authmodule.NewModule,
+		bankmodule.NewModule,
 		commentsmodule.NewModule,
 		favoritesmodule.NewModule,
 		rentalsmodule.NewModule,
@@ -139,6 +141,8 @@ type containerParams struct {
 	FavoriteHandler    *handlers.FavoriteHandler
 	RentalHandler      *handlers.RentalHandler
 	PasswordHandler    *handlers.PasswordHandler
+	BankService        *service.BankService
+	BankHandler        *handlers.BankHandler
 }
 
 func buildContainer(p containerParams) *Container {
@@ -167,5 +171,7 @@ func buildContainer(p containerParams) *Container {
 		FavoriteHandler:    p.FavoriteHandler,
 		RentalHandler:      p.RentalHandler,
 		PasswordHandler:    p.PasswordHandler,
+		BankService:        p.BankService,
+		BankHandler:        p.BankHandler,
 	}
 }

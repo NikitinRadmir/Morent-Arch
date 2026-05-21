@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import BankHeader from '../components/BankHeader';
-import { useBank } from '../context/BankContext';
 
 const offers = [
   {
@@ -22,9 +21,6 @@ const offers = [
 ];
 
 const BankHome = () => {
-  const { balance } = useBank();
-  const balanceFormatted = balance.toLocaleString('ru-RU');
-
   return (
     <>
       <BankHeader />
@@ -32,7 +28,7 @@ const BankHome = () => {
         <section className="mb-hero-balance text-center text-md-start">
           <p className="mb-hero-balance-label mb-0">Доступно на счёте</p>
           <p className="mb-hero-balance-value mb-0">
-            {balanceFormatted}
+            —
             <span className="mb-hero-balance-currency">₽</span>
           </p>
         </section>

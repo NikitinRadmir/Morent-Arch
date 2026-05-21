@@ -31,6 +31,7 @@ type Config struct {
 	SessionCookieName     string
 	SessionCookieSecure   bool
 	SessionCookieDomain   string
+	BankSessionCookieName string
 
 	RedisAddr             string
 	RedisPassword         string
@@ -64,8 +65,9 @@ func LoadFromEnv() (*Config, error) {
 		AggregatorTimeoutSec: getEnvInt("AGGREGATOR_TIMEOUT_SEC", 35),
 		AggregatorRetryCount: getEnvInt("AGGREGATOR_RETRY_COUNT", 3),
 		GeneratorBaseURL:     strings.TrimRight(getEnv("GENERATOR_BASE_URL", "http://localhost:8080"), "/"),
-		SessionCookieName:    getEnv("SESSION_COOKIE_NAME", "morent_session"),
-		SessionCookieDomain:  getEnv("SESSION_COOKIE_DOMAIN", ""),
+		SessionCookieName:     getEnv("SESSION_COOKIE_NAME", "morent_session"),
+		SessionCookieDomain:   getEnv("SESSION_COOKIE_DOMAIN", ""),
+		BankSessionCookieName: getEnv("BANK_SESSION_COOKIE_NAME", "morent_bank_session"),
 		RedisAddr:            getEnv("REDIS_ADDR", ""),
 		RedisPassword:        getEnv("REDIS_PASSWORD", ""),
 		RedisDB:              getEnvInt("REDIS_DB", 0),

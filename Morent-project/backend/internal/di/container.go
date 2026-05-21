@@ -36,4 +36,6 @@ type Container struct {
 	FavoriteHandler    *handlers.FavoriteHandler
 	RentalHandler      *handlers.RentalHandler
 	PasswordHandler    *handlers.PasswordHandler
+	BankService        *service.BankService
+	BankHandler        *handlers.BankHandler
 }

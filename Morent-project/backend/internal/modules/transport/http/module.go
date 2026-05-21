@@ -11,6 +11,7 @@ import (
 
 	"morent-backend/internal/di"
 	admintransport "morent-backend/internal/modules/transport/http/admin"
+	banktransport "morent-backend/internal/modules/transport/http/bank"
 	"morent-backend/internal/modules/transport/http/common"
 	graphqltransport "morent-backend/internal/modules/transport/http/graphql"
 	"morent-backend/internal/modules/transport/http/public"
@@ -41,6 +42,7 @@ func RegisterLifecycle(lc fx.Lifecycle, container *di.Container, schema graphql.
 	mux.HandleFunc("/swagger/", common.WrapCORS(server.SwaggerUI))
 	graphqltransport.Register(mux, schema)
 	public.Register(mux, container)
+	banktransport.Register(mux, container)
 	admintransport.Register(mux, container)
 	mux.HandleFunc("/", common.WrapCORS(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
