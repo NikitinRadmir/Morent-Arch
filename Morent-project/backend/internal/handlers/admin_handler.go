@@ -19,6 +19,7 @@ import (
 	"morent-backend/internal/models"
 	adminapp "morent-backend/internal/modules/admin/app"
 	admindto "morent-backend/internal/modules/admin/httpdto"
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 	"morent-backend/internal/storage"
 )
@@ -70,7 +71,33 @@ func NewAdminHandler(
 
 // ---- Users ----
 
+func (h *AdminHandler) Users(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.ListUsers(w, r)
+	case http.MethodPut:
+		h.UpdateUser(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *AdminHandler) Comments(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.ListComments(w, r)
+	case http.MethodPut:
+		h.UpdateComment(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	ctx := r.Context()
 	users, err := h.adminService.ListUsers()
 	logEvent := service.LogEvent{
@@ -83,7 +110,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		logEvent.Result = "error"
 		logEvent.Message = err.Error()
 		_ = h.logService.LogEvent(ctx, logEvent)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to list users")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -91,24 +118,27 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var req admindto.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
-	u := req.User
-	if u.ID == 0 {
+	if req.ID == 0 {
 		http.Error(w, "id required", http.StatusBadRequest)
 		return
 	}
 	ctx := r.Context()
-	err := h.adminService.UpdateUser(&u)
+	err := h.adminService.UpdateUser(req)
 	logEvent := service.LogEvent{
 		Time:   time.Now(),
 		Type:   service.LogCRUD,
-		UserID: u.ID,
+		UserID: req.ID,
 		Action: "update_user",
-		Data:   u,
+		Data:   req,
 		Result: "success",
 	}
 	if err != nil {
@@ -119,11 +149,12 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to update user")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
-	json.NewEncoder(w).Encode(u)
+	user, _ := h.adminService.GetUser(req.ID)
+	json.NewEncoder(w).Encode(user)
 }
 
 func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +180,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -171,7 +202,7 @@ func (h *AdminHandler) ListRentals(w http.ResponseWriter, r *http.Request) {
 		logEvent.Result = "error"
 		logEvent.Message = err.Error()
 		_ = h.logService.LogEvent(ctx, logEvent)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -202,7 +233,7 @@ func (h *AdminHandler) DeleteRental(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -224,7 +255,7 @@ func (h *AdminHandler) ListFavorites(w http.ResponseWriter, r *http.Request) {
 		logEvent.Result = "error"
 		logEvent.Message = err.Error()
 		_ = h.logService.LogEvent(ctx, logEvent)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -257,7 +288,7 @@ func (h *AdminHandler) DeleteFavorite(w http.ResponseWriter, r *http.Request) {
 		logEvent.Result = "error"
 		logEvent.Message = err.Error()
 		_ = h.logService.LogEvent(ctx, logEvent)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -267,6 +298,10 @@ func (h *AdminHandler) DeleteFavorite(w http.ResponseWriter, r *http.Request) {
 // ---- Comments ----
 
 func (h *AdminHandler) ListComments(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	ctx := r.Context()
 	comments, err := h.adminService.ListComments()
 	logEvent := service.LogEvent{
@@ -279,7 +314,7 @@ func (h *AdminHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 		logEvent.Result = "error"
 		logEvent.Message = err.Error()
 		_ = h.logService.LogEvent(ctx, logEvent)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to list comments")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -287,24 +322,27 @@ func (h *AdminHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var req admindto.UpdateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
-	c := req.Comment
-	if c.ID == 0 {
+	if req.ID == 0 {
 		http.Error(w, "id required", http.StatusBadRequest)
 		return
 	}
 	ctx := r.Context()
-	err := h.adminService.UpdateComment(&c)
+	err := h.adminService.UpdateComment(req)
 	logEvent := service.LogEvent{
 		Time:     time.Now(),
 		Type:     service.LogCRUD,
-		ObjectID: c.ID,
+		ObjectID: req.ID,
 		Action:   "update_comment",
-		Data:     c,
+		Data:     req,
 		Result:   "success",
 	}
 	if err != nil {
@@ -315,11 +353,11 @@ func (h *AdminHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to update comment")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
-	json.NewEncoder(w).Encode(c)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AdminHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +383,7 @@ func (h *AdminHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "operation failed")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, logEvent)
@@ -358,7 +396,7 @@ func (h *AdminHandler) ListLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	events, err := h.adminService.ListLogs(ctx, time.Now())
 	if err != nil {
-		http.Error(w, "failed to load logs: "+err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to load logs")
 		return
 	}
 	json.NewEncoder(w).Encode(events)
@@ -516,7 +554,7 @@ func (h *AdminHandler) ImportAggregatorCar(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := h.carService.Create(&car); err != nil {
-		http.Error(w, "failed to import car: "+err.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to import car")
 		return
 	}
 
@@ -540,9 +578,28 @@ func parseIDFromPath(path string) (uint64, bool) {
 }
 
 func (h *AdminHandler) doAggregatorRequest(req *http.Request) (*http.Response, error) {
+	var bodyBytes []byte
+	if req.Body != nil {
+		var errRead error
+		bodyBytes, errRead = io.ReadAll(req.Body)
+		if errRead != nil {
+			return nil, errRead
+		}
+		_ = req.Body.Close()
+	}
+	getBody := func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(bodyBytes)), nil
+	}
+	req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	req.GetBody = getBody
+	req.ContentLength = int64(len(bodyBytes))
+
 	var lastErr error
 	for attempt := 1; attempt <= h.retryCount; attempt++ {
 		cloned := req.Clone(req.Context())
+		cloned.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		cloned.GetBody = getBody
+		cloned.ContentLength = int64(len(bodyBytes))
 		resp, err := h.httpClient.Do(cloned)
 		if err == nil {
 			return resp, nil

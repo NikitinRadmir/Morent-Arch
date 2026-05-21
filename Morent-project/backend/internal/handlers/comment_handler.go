@@ -181,7 +181,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Comment not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Error updating comment: "+errUpdate.Error(), http.StatusInternalServerError)
+		common.WriteInternalError(w, "failed to update comment")
 		return
 	}
 

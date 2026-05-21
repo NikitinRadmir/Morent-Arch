@@ -2,14 +2,18 @@ package app
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"time"
 
+	admindto "morent-backend/internal/modules/admin/httpdto"
 	"morent-backend/internal/models"
 	"morent-backend/internal/service"
 )
 
 type UserRepository interface {
 	ListAll() ([]models.User, error)
+	GetByID(id uint) (*models.User, error)
 	Update(user *models.User) error
 	Delete(id uint64) error
 }
@@ -26,6 +30,7 @@ type FavoriteRepository interface {
 
 type CommentRepository interface {
 	ListAll() ([]models.Comment, error)
+	GetByID(id uint) (*models.Comment, error)
 	Update(c *models.Comment) error
 	Delete(id uint) error
 }
@@ -62,7 +67,40 @@ func (s *Service) ListUsers() ([]models.User, error) {
 	return s.userRepo.ListAll()
 }
 
-func (s *Service) UpdateUser(user *models.User) error {
+func (s *Service) GetUser(id uint) (*models.User, error) {
+	return s.userRepo.GetByID(id)
+}
+
+func (s *Service) UpdateUser(req admindto.UpdateUserRequest) error {
+	user, err := s.userRepo.GetByID(req.ID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+	if req.Name != nil {
+		user.Name = strings.TrimSpace(*req.Name)
+	}
+	if req.Email != nil {
+		user.Email = strings.ToLower(strings.TrimSpace(*req.Email))
+	}
+	if req.Nickname != nil {
+		user.Nickname = strings.TrimSpace(*req.Nickname)
+	}
+	if req.Position != nil {
+		user.Position = strings.TrimSpace(*req.Position)
+	}
+	if req.AvatarURL != nil {
+		user.AvatarURL = strings.TrimSpace(*req.AvatarURL)
+	}
+	if req.Role != nil {
+		role := strings.ToLower(strings.TrimSpace(*req.Role))
+		if role != "admin" && role != "user" {
+			return errors.New("invalid role")
+		}
+		user.Role = role
+	}
 	return s.userRepo.Update(user)
 }
 
@@ -90,8 +128,21 @@ func (s *Service) ListComments() ([]models.Comment, error) {
 	return s.commentRepo.ListAll()
 }
 
-func (s *Service) UpdateComment(comment *models.Comment) error {
-	return s.commentRepo.Update(comment)
+func (s *Service) UpdateComment(req admindto.UpdateCommentRequest) error {
+	target, err := s.commentRepo.GetByID(req.ID)
+	if err != nil {
+		return err
+	}
+	if target == nil {
+		return errors.New("comment not found")
+	}
+	if req.Description != nil {
+		target.Description = strings.TrimSpace(*req.Description)
+	}
+	if req.Rating != nil {
+		target.Rating = *req.Rating
+	}
+	return s.commentRepo.Update(target)
 }
 
 func (s *Service) DeleteComment(id uint) error {
