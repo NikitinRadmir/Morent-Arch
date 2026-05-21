@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	morentevents "morent-events"
 	"morent-arch/payment-service/internal/bank"
 	"morent-arch/payment-service/internal/config"
 	"morent-arch/payment-service/internal/repository/memory"
 	"morent-arch/payment-service/internal/service"
+	morentevents "morent-events"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -28,7 +28,7 @@ func NewBankKafka(cfg config.Config, log *slog.Logger) (*BankKafka, error) {
 	}
 	brokers := strings.Split(cfg.KafkaBrokers, ",")
 	store := memory.NewStore()
-	pay := service.NewPaymentService(store, store, store, store, store)
+	pay := service.NewPaymentService(store, store, store, store, store, store)
 	proc := bank.NewProcessor(pay, bank.NewRegistry())
 
 	reader := kafka.NewReader(kafka.ReaderConfig{

@@ -25,9 +25,21 @@ type LedgerRepository interface {
 	ListByAccount(accountID string, limit int, cursor string) (entries []*domain.LedgerEntry, nextCursor string, err error)
 }
 
+type PaymentRepository interface {
+	CreatePayment(p *domain.Payment) error
+	GetPaymentByID(id string) (*domain.Payment, error)
+}
+
 type IdempotencyRepository interface {
-	Get(key string) (string, bool)
-	Put(key, transferID string)
+	Get(key string) (IdempotencyRecord, bool)
+	Put(record IdempotencyRecord)
+}
+
+type IdempotencyRecord struct {
+	Key          string
+	ResourceID   string
+	ResourceType string
+	Fingerprint  string
 }
 
 type TransferFilter struct {

@@ -13,10 +13,12 @@ type Store struct {
 	mu            sync.RWMutex
 	accounts      map[string]*domain.Account
 	transfers     map[string]*domain.Transfer
+	payments      map[string]*domain.Payment
 	ledger        map[string][]*domain.LedgerEntry // by account
-	idempotency   map[string]string                // key -> transferID
+	idempotency   map[string]repository.IdempotencyRecord
 	accountIndex  []string
 	transferIndex []string
+	paymentIndex  []string
 	// Лимиты: ключ = accountID:period:date (например, "acc123:daily:2025-01-15")
 	limits map[string]*domain.OperationLimits
 }
@@ -25,9 +27,11 @@ func NewStore() *Store {
 	return &Store{
 		accounts:      make(map[string]*domain.Account),
 		transfers:     make(map[string]*domain.Transfer),
+		payments:      make(map[string]*domain.Payment),
 		ledger:        make(map[string][]*domain.LedgerEntry),
-		idempotency:   make(map[string]string),
+		idempotency:   make(map[string]repository.IdempotencyRecord),
 		transferIndex: make([]string, 0),
+		paymentIndex:  make([]string, 0),
 		limits:        make(map[string]*domain.OperationLimits),
 	}
 }
@@ -36,6 +40,7 @@ func NewStore() *Store {
 var _ repository.AccountRepository = (*Store)(nil)
 var _ repository.TransferRepository = (*Store)(nil)
 var _ repository.LedgerRepository = (*Store)(nil)
+var _ repository.PaymentRepository = (*Store)(nil)
 var _ repository.IdempotencyRepository = (*Store)(nil)
 var _ repository.LimitsRepository = (*Store)(nil)
 
@@ -156,6 +161,30 @@ func (s *Store) ListTransfers(filter repository.TransferFilter) ([]*domain.Trans
 	return out, nil
 }
 
+func (s *Store) CreatePayment(p *domain.Payment) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.payments[p.ID]; ok {
+		return domain.ErrConflict
+	}
+	if p.CreatedAt.IsZero() {
+		p.CreatedAt = time.Now()
+	}
+	s.payments[p.ID] = clonePayment(p)
+	s.paymentIndex = append(s.paymentIndex, p.ID)
+	return nil
+}
+
+func (s *Store) GetPaymentByID(id string) (*domain.Payment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	p, ok := s.payments[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return clonePayment(p), nil
+}
+
 func (s *Store) Append(e *domain.LedgerEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -196,21 +225,22 @@ func (s *Store) ListByAccount(accountID string, limit int, cursor string) ([]*do
 	return out, next, nil
 }
 
-func (s *Store) Get(key string) (string, bool) {
+func (s *Store) Get(key string) (repository.IdempotencyRecord, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	v, ok := s.idempotency[key]
 	return v, ok
 }
 
-func (s *Store) Put(key, transferID string) {
+func (s *Store) Put(record repository.IdempotencyRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.idempotency[key] = transferID
+	s.idempotency[record.Key] = record
 }
 
 func cloneAccount(a *domain.Account) *domain.Account       { cp := *a; return &cp }
 func cloneTransfer(t *domain.Transfer) *domain.Transfer    { cp := *t; return &cp }
+func clonePayment(p *domain.Payment) *domain.Payment       { cp := *p; return &cp }
 func cloneEntry(e *domain.LedgerEntry) *domain.LedgerEntry { cp := *e; return &cp }
 
 func (s *Store) GetOperationLimits(accountID string, period domain.LimitPeriod, date time.Time) (*domain.OperationLimits, error) {

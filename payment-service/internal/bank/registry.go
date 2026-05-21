@@ -7,9 +7,9 @@ import (
 )
 
 type clientRecord struct {
-	AccountID   string
-	Phone       string
-	DisplayName string
+	AccountID    string
+	Phone        string
+	DisplayName  string
 	PasswordHash []byte
 }
 
@@ -20,7 +20,7 @@ type sessionRecord struct {
 
 type Registry struct {
 	mu       sync.RWMutex
-	clients  map[string]*clientRecord // phone -> client
+	clients  map[string]*clientRecord  // phone -> client
 	sessions map[string]*sessionRecord // token -> session
 }
 

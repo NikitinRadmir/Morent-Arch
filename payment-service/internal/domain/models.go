@@ -22,6 +22,8 @@ var (
 	ErrTransferAlreadyReversed = errors.New("transfer already reversed")
 	ErrLimitExceeded           = errors.New("limit exceeded")
 	ErrInvalidFee              = errors.New("invalid fee")
+	ErrIdempotencyKeyConflict  = errors.New("idempotency key conflict")
+	ErrInvalidPayment          = errors.New("invalid payment")
 )
 
 type AccountStatus string
@@ -65,6 +67,26 @@ type Transfer struct {
 	CreatedAt     time.Time
 	PostedAt      *time.Time
 	ReversedAt    *time.Time
+}
+
+type PaymentStatus string
+
+const (
+	PaymentPending   PaymentStatus = "pending"
+	PaymentSucceeded PaymentStatus = "succeeded"
+	PaymentFailed    PaymentStatus = "failed"
+)
+
+type Payment struct {
+	ID          string
+	ReferenceID string
+	UserID      string
+	CarID       string
+	Amount      Money
+	Currency    string
+	Status      PaymentStatus
+	CreatedAt   time.Time
+	ProcessedAt *time.Time
 }
 
 type OperationType string
