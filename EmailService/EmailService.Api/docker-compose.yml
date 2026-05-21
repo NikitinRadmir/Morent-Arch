@@ -47,13 +47,26 @@
     environment:
       DOTNET_ENVIRONMENT: Docker
 
-      # PostgreSQL
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=email_service;Username=postgres;Password=password123
 
-      # RabbitMQ
+  # RabbitMQ
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Username: guest
       RabbitMQ__Password: guest
+
+  # Resend
+      Resend__ApiKey: re_isY4dWzL_NxA825SJT2ckFsag7UpZ9aek
+      Resend__FromEmail: onboarding@resend.dev
+      Resend__FromName: AutoRental Test
+
+  # SMTP
+      Smtp__Host: smtp.yandex.ru
+      Smtp__Port: 587
+      Smtp__Username: ayagarifullin@kpfu.ru
+      Smtp__Password: mecvcslcmwyczhxz
+      Smtp__UseSsl: true
+      Smtp__FromEmail: ayagarifullin@kpfu.ru
+      Smtp__FromName: AutoRental
 
     depends_on:
       postgres:

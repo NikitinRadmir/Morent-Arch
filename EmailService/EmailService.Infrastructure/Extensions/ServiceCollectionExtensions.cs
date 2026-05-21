@@ -37,20 +37,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMemoryCache, MemoryCache>();
         services.AddSingleton<ITemplateRenderer, ScribanTemplateRenderer>();
 
-        services.AddHttpClient<IEmailProvider, ResendEmailProvider>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.resend.com/");
-
-            var apiKey = config["Resend:ApiKey"];
-
-            if (!string.IsNullOrEmpty(apiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue(
-                        "Bearer",
-                        apiKey);
-            }
-        });
+        // 🔹 SMTP Provider
+        services.Configure<SmtpOptions>(config.GetSection("Smtp"));
+        services.AddSingleton<IEmailProvider, SmtpEmailProvider>();
 
         services.AddDbContext<EmailDbContext>(opt =>
             opt.UseNpgsql(config.GetConnectionString("EmailDb")));

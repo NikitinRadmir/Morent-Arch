@@ -16,10 +16,12 @@
 		<!-- 🔹 Конфигурация и кэш -->
 
 		<!-- 🔹 HttpClient + Polly (классическая совместимая пара) -->
+		<PackageReference Include="MailKit" Version="4.16.0" />
 		<PackageReference Include="MassTransit.RabbitMQ" Version="8.1.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
