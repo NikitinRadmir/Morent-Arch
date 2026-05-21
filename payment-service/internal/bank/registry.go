@@ -27,7 +27,7 @@ type Registry struct {
 	mu       sync.RWMutex
 	clients  map[string]*clientRecord // phone -> client
 	cards    map[string]string        // cardNumber -> phone
-	sessions map[string]*sessionRecord
+	sessions map[string]*sessionRecord // token -> session
 }
 
 func NewRegistry() *Registry {

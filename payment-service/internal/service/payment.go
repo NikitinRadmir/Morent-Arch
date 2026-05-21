@@ -2,25 +2,37 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"morent-arch/payment-service/internal/domain"
+	"morent-arch/payment-service/internal/observability"
 	"morent-arch/payment-service/internal/repository"
 )
 
 type PaymentService struct {
+	mu          sync.Mutex
 	accounts    repository.AccountRepository
 	transfers   repository.TransferRepository
 	ledger      repository.LedgerRepository
+	payments    repository.PaymentRepository
 	idempoStore repository.IdempotencyRepository
 	limits      repository.LimitsRepository
 }
 
-func NewPaymentService(a repository.AccountRepository, t repository.TransferRepository, l repository.LedgerRepository, id repository.IdempotencyRepository, lim repository.LimitsRepository) *PaymentService {
-	return &PaymentService{accounts: a, transfers: t, ledger: l, idempoStore: id, limits: lim}
+func NewPaymentService(a repository.AccountRepository, t repository.TransferRepository, l repository.LedgerRepository, p repository.PaymentRepository, id repository.IdempotencyRepository, lim repository.LimitsRepository) *PaymentService {
+	return &PaymentService{accounts: a, transfers: t, ledger: l, payments: p, idempoStore: id, limits: lim}
 }
+
+const (
+	idempotencyResourceTransfer = "transfer"
+	idempotencyResourcePayment  = "payment"
+)
 
 type CreateAccountInput struct {
 	Owner        string
@@ -44,6 +56,15 @@ type BalanceChangeInput struct {
 	Currency  string
 }
 
+type CreatePaymentInput struct {
+	ReferenceID    string
+	UserID         string
+	CarID          string
+	Amount         domain.Money
+	Currency       string
+	IdempotencyKey string
+}
+
 type ListAccountsFilter struct {
 	Status domain.AccountStatus
 	Owner  string
@@ -59,7 +80,7 @@ type AccountSummary struct {
 	TotalFees         domain.Money
 }
 
-func (s *PaymentService) CreateAccount(_ context.Context, in CreateAccountInput) (*domain.Account, error) {
+func (s *PaymentService) CreateAccount(ctx context.Context, in CreateAccountInput) (*domain.Account, error) {
 	if strings.TrimSpace(in.Owner) == "" {
 		return nil, domain.ErrInvalidOwner
 	}
@@ -85,6 +106,13 @@ func (s *PaymentService) CreateAccount(_ context.Context, in CreateAccountInput)
 	if err := s.accounts.CreateAccount(acc); err != nil {
 		return nil, err
 	}
+	logInfo(ctx, "account_created",
+		"account_id", acc.ID,
+		"owner", acc.Owner,
+		"currency", acc.Currency,
+		"daily_limit_minor", acc.DailyLimit,
+		"monthly_limit_minor", acc.MonthlyLimit,
+	)
 	return acc, nil
 }
 
@@ -114,8 +142,94 @@ func (s *PaymentService) GetTransfer(_ context.Context, id string) (*domain.Tran
 	return s.transfers.GetTransferByID(id)
 }
 
+func (s *PaymentService) CreatePayment(ctx context.Context, in CreatePaymentInput) (*domain.Payment, error) {
+	if in.Amount <= 0 {
+		return nil, domain.ErrInvalidAmount
+	}
+	referenceID := strings.TrimSpace(in.ReferenceID)
+	userID := strings.TrimSpace(in.UserID)
+	carID := strings.TrimSpace(in.CarID)
+	currency := strings.ToUpper(strings.TrimSpace(in.Currency))
+	if referenceID == "" || userID == "" || carID == "" {
+		return nil, domain.ErrInvalidPayment
+	}
+	if !domain.IsSupportedCurrency(currency) {
+		return nil, domain.ErrUnsupportedCurrency
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	input := in
+	input.ReferenceID = referenceID
+	input.UserID = userID
+	input.CarID = carID
+	input.Currency = currency
+	fingerprint := paymentFingerprint(input)
+	if input.IdempotencyKey != "" {
+		if record, ok := s.idempoStore.Get(input.IdempotencyKey); ok {
+			if record.ResourceType != idempotencyResourcePayment || record.Fingerprint != fingerprint {
+				logWarn(ctx, "payment_idempotency_conflict",
+					"idempotency_key", input.IdempotencyKey,
+					"reference_id", referenceID,
+				)
+				return nil, domain.ErrIdempotencyKeyConflict
+			}
+			logInfo(ctx, "payment_idempotency_replayed",
+				"idempotency_key", input.IdempotencyKey,
+				"payment_id", record.ResourceID,
+			)
+			return s.payments.GetPaymentByID(record.ResourceID)
+		}
+	}
+
+	now := time.Now()
+	payment := &domain.Payment{
+		ID:          newID(),
+		ReferenceID: referenceID,
+		UserID:      userID,
+		CarID:       carID,
+		Amount:      input.Amount,
+		Currency:    currency,
+		Status:      domain.PaymentSucceeded,
+		CreatedAt:   now,
+		ProcessedAt: &now,
+	}
+	if err := s.payments.CreatePayment(payment); err != nil {
+		return nil, err
+	}
+	if input.IdempotencyKey != "" {
+		s.idempoStore.Put(repository.IdempotencyRecord{
+			Key:          input.IdempotencyKey,
+			ResourceID:   payment.ID,
+			ResourceType: idempotencyResourcePayment,
+			Fingerprint:  fingerprint,
+		})
+	}
+	logInfo(ctx, "payment_succeeded",
+		"payment_id", payment.ID,
+		"reference_id", payment.ReferenceID,
+		"user_id", payment.UserID,
+		"car_id", payment.CarID,
+		"amount_minor", payment.Amount,
+		"currency", payment.Currency,
+		"idempotency_key_present", input.IdempotencyKey != "",
+	)
+	return payment, nil
+}
+
+func (s *PaymentService) GetPayment(_ context.Context, id string) (*domain.Payment, error) {
+	return s.payments.GetPaymentByID(id)
+}
+
 // Transfer с идемпотентностью, комиссиями и лимитами, с оптимистичными ретраями.
-func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.Transfer, error) {
+func (s *PaymentService) Transfer(ctx context.Context, in TransferInput) (*domain.Transfer, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.transferLocked(ctx, in)
+}
+
+func (s *PaymentService) transferLocked(ctx context.Context, in TransferInput) (*domain.Transfer, error) {
 	if in.FromAccountID == in.ToAccountID {
 		return nil, domain.ErrSameAccount
 	}
@@ -125,9 +239,22 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 	if in.Fee < 0 {
 		return nil, domain.ErrInvalidFee
 	}
+	fingerprint := transferFingerprint(in)
 	if in.IdempotencyKey != "" {
-		if tid, ok := s.idempoStore.Get(in.IdempotencyKey); ok {
-			return s.transfers.GetTransferByID(tid)
+		if record, ok := s.idempoStore.Get(in.IdempotencyKey); ok {
+			if record.ResourceType != idempotencyResourceTransfer || record.Fingerprint != fingerprint {
+				logWarn(ctx, "transfer_idempotency_conflict",
+					"idempotency_key", in.IdempotencyKey,
+					"from_account_id", in.FromAccountID,
+					"to_account_id", in.ToAccountID,
+				)
+				return nil, domain.ErrIdempotencyKeyConflict
+			}
+			logInfo(ctx, "transfer_idempotency_replayed",
+				"idempotency_key", in.IdempotencyKey,
+				"transfer_id", record.ResourceID,
+			)
+			return s.transfers.GetTransferByID(record.ResourceID)
 		}
 	}
 
@@ -263,8 +390,22 @@ func (s *PaymentService) Transfer(_ context.Context, in TransferInput) (*domain.
 		return nil, domain.ErrConflict
 	}
 	if in.IdempotencyKey != "" {
-		s.idempoStore.Put(in.IdempotencyKey, tr.ID)
+		s.idempoStore.Put(repository.IdempotencyRecord{
+			Key:          in.IdempotencyKey,
+			ResourceID:   tr.ID,
+			ResourceType: idempotencyResourceTransfer,
+			Fingerprint:  fingerprint,
+		})
 	}
+	logInfo(ctx, "transfer_posted",
+		"transfer_id", tr.ID,
+		"from_account_id", tr.FromAccountID,
+		"to_account_id", tr.ToAccountID,
+		"amount_minor", tr.Amount,
+		"fee_minor", tr.Fee,
+		"currency", tr.Currency,
+		"idempotency_key_present", in.IdempotencyKey != "",
+	)
 	return tr, nil
 }
 
@@ -313,21 +454,27 @@ func (s *PaymentService) GetAccountSummary(_ context.Context, accountID string) 
 	return sum, nil
 }
 
-func (s *PaymentService) Deposit(_ context.Context, in BalanceChangeInput) (*domain.Account, error) {
+func (s *PaymentService) Deposit(ctx context.Context, in BalanceChangeInput) (*domain.Account, error) {
 	if in.Amount <= 0 {
 		return nil, domain.ErrInvalidAmount
 	}
-	return s.changeBalance(in.AccountID, in.Currency, in.Amount)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.changeBalance(ctx, in.AccountID, in.Currency, in.Amount)
 }
 
-func (s *PaymentService) Withdraw(_ context.Context, in BalanceChangeInput) (*domain.Account, error) {
+func (s *PaymentService) Withdraw(ctx context.Context, in BalanceChangeInput) (*domain.Account, error) {
 	if in.Amount <= 0 {
 		return nil, domain.ErrInvalidAmount
 	}
-	return s.changeBalance(in.AccountID, in.Currency, -in.Amount)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.changeBalance(ctx, in.AccountID, in.Currency, -in.Amount)
 }
 
 func (s *PaymentService) CloseAccount(_ context.Context, accountID string) (*domain.Account, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for retries := 0; retries < 3; retries++ {
 		acc, err := s.accounts.GetAccountByID(accountID)
 		if err != nil {
@@ -353,7 +500,7 @@ func (s *PaymentService) CloseAccount(_ context.Context, accountID string) (*dom
 	return nil, domain.ErrConflict
 }
 
-func (s *PaymentService) changeBalance(accountID, currency string, delta domain.Money) (*domain.Account, error) {
+func (s *PaymentService) changeBalance(ctx context.Context, accountID, currency string, delta domain.Money) (*domain.Account, error) {
 	for retries := 0; retries < 3; retries++ {
 		acc, err := s.accounts.GetAccountByID(accountID)
 		if err != nil {
@@ -391,13 +538,23 @@ func (s *PaymentService) changeBalance(accountID, currency string, delta domain.
 			CreatedAt:     time.Now(),
 		}
 		_ = s.ledger.Append(entry)
+		logInfo(ctx, "balance_changed",
+			"account_id", accountID,
+			"operation_type", opType,
+			"amount_minor", amount,
+			"currency", currency,
+			"balance_minor", acc.Balance,
+		)
 		return acc, nil
 	}
 	return nil, domain.ErrConflict
 }
 
 // ReverseTransfer отменяет выполненный перевод, возвращая средства обратно.
-func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (*domain.Transfer, error) {
+func (s *PaymentService) ReverseTransfer(ctx context.Context, transferID string) (*domain.Transfer, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	tr, err := s.transfers.GetTransferByID(transferID)
 	if err != nil {
 		return nil, err
@@ -414,8 +571,8 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 		ID:            newID(),
 		FromAccountID: tr.ToAccountID,
 		ToAccountID:   tr.FromAccountID,
-		Amount:        tr.Amount + tr.Fee, // возвращаем сумму + комиссию
-		Fee:           0,                  // при реверсе комиссия не взимается
+		Amount:        tr.Amount,
+		Fee:           0,
 		Currency:      tr.Currency,
 		Status:        domain.TransferPending,
 		CreatedAt:     time.Now(),
@@ -442,8 +599,8 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 
 		// С получателя списываем только сумму перевода
 		from.Balance -= tr.Amount
-		// Отправителю возвращаем сумму + комиссию
-		to.Balance += tr.Amount + tr.Fee
+		// Отправителю возвращаем сумму перевода; комиссия остается уже учтенной как fee.
+		to.Balance += tr.Amount
 
 		if err = s.accounts.UpdateAccount(from); err != nil {
 			if err == domain.ErrConflict {
@@ -479,19 +636,6 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 			Description:   "Reversal of transfer " + transferID + " (return amount)",
 			CreatedAt:     entryTime,
 		})
-		// Запись для отправителя: возвращаем комиссию
-		if tr.Fee > 0 {
-			_ = s.ledger.Append(&domain.LedgerEntry{
-				ID:            newID(),
-				AccountID:     to.ID,
-				TransferID:    reverseTr.ID,
-				OperationType: domain.OperationReversal,
-				Amount:        tr.Fee,
-				Description:   "Reversal of transfer " + transferID + " (return fee)",
-				CreatedAt:     entryTime,
-			})
-		}
-
 		now := time.Now()
 		reverseTr.Status = domain.TransferPosted
 		reverseTr.PostedAt = &now
@@ -517,6 +661,14 @@ func (s *PaymentService) ReverseTransfer(_ context.Context, transferID string) (
 	if reverseTr.Status != domain.TransferPosted {
 		return nil, domain.ErrConflict
 	}
+	logInfo(ctx, "transfer_reversed",
+		"original_transfer_id", tr.ID,
+		"reverse_transfer_id", reverseTr.ID,
+		"from_account_id", reverseTr.FromAccountID,
+		"to_account_id", reverseTr.ToAccountID,
+		"amount_minor", reverseTr.Amount,
+		"currency", reverseTr.Currency,
+	)
 	return reverseTr, nil
 }
 
@@ -601,7 +753,10 @@ type BatchTransferError struct {
 }
 
 // BatchTransfer выполняет несколько переводов атомарно (все или ничего).
-func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferItem, idempotencyKeyPrefix string) (*BatchTransferResult, error) {
+func (s *PaymentService) BatchTransfer(ctx context.Context, items []BatchTransferItem, idempotencyKeyPrefix string) (*BatchTransferResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if len(items) == 0 {
 		return &BatchTransferResult{}, nil
 	}
@@ -611,6 +766,7 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 		Transfers: make([]*domain.Transfer, 0, len(items)),
 		Errors:    make([]BatchTransferError, 0),
 	}
+	requiredByAccount := make(map[string]domain.Money)
 
 	// Валидация всех операций перед выполнением
 	for i, item := range items {
@@ -645,6 +801,27 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 				Error: domain.ErrUnsupportedCurrency.Error(),
 			})
 			continue
+		}
+		if idempotencyKeyPrefix != "" {
+			idemKey := fmt.Sprintf("%s:%d", idempotencyKeyPrefix, i)
+			input := TransferInput{
+				FromAccountID:  item.FromAccountID,
+				ToAccountID:    item.ToAccountID,
+				Amount:         item.Amount,
+				Fee:            item.Fee,
+				Currency:       item.Currency,
+				IdempotencyKey: idemKey,
+			}
+			if record, ok := s.idempoStore.Get(idemKey); ok {
+				if record.ResourceType != idempotencyResourceTransfer || record.Fingerprint != transferFingerprint(input) {
+					result.Errors = append(result.Errors, BatchTransferError{
+						Index: i,
+						Item:  item,
+						Error: domain.ErrIdempotencyKeyConflict.Error(),
+					})
+				}
+				continue
+			}
 		}
 
 		// Проверяем существование счетов
@@ -701,6 +878,40 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 			})
 			continue
 		}
+		requiredByAccount[from.ID] += totalDebit
+	}
+
+	for accountID, required := range requiredByAccount {
+		acc, err := s.accounts.GetAccountByID(accountID)
+		if err != nil {
+			result.Errors = append(result.Errors, BatchTransferError{Index: -1, Error: err.Error()})
+			continue
+		}
+		if acc.Balance < required {
+			result.Errors = append(result.Errors, BatchTransferError{
+				Index: -1,
+				Error: fmt.Sprintf("%s: %s", accountID, domain.ErrInsufficientFunds.Error()),
+			})
+		}
+		now := time.Now()
+		if acc.DailyLimit > 0 {
+			dailyLimits, err := s.limits.GetOperationLimits(accountID, domain.LimitDaily, now)
+			if err == nil && !dailyLimits.CheckLimit(acc.DailyLimit, required) {
+				result.Errors = append(result.Errors, BatchTransferError{
+					Index: -1,
+					Error: fmt.Sprintf("%s: %s", accountID, domain.ErrLimitExceeded.Error()),
+				})
+			}
+		}
+		if acc.MonthlyLimit > 0 {
+			monthlyLimits, err := s.limits.GetOperationLimits(accountID, domain.LimitMonthly, now)
+			if err == nil && !monthlyLimits.CheckLimit(acc.MonthlyLimit, required) {
+				result.Errors = append(result.Errors, BatchTransferError{
+					Index: -1,
+					Error: fmt.Sprintf("%s: %s", accountID, domain.ErrLimitExceeded.Error()),
+				})
+			}
+		}
 	}
 
 	// Если есть ошибки валидации, возвращаем их
@@ -716,7 +927,7 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 			idemKey = fmt.Sprintf("%s:%d", idempotencyKeyPrefix, i)
 		}
 
-		tr, err := s.Transfer(context.Background(), TransferInput{
+		tr, err := s.transferLocked(ctx, TransferInput{
 			FromAccountID:  item.FromAccountID,
 			ToAccountID:    item.ToAccountID,
 			Amount:         item.Amount,
@@ -738,5 +949,38 @@ func (s *PaymentService) BatchTransfer(_ context.Context, items []BatchTransferI
 		}
 	}
 
+	logInfo(ctx, "batch_transfer_completed",
+		"total", result.Total,
+		"successful", result.Successful,
+		"failed", result.Failed,
+		"idempotency_key_prefix_present", idempotencyKeyPrefix != "",
+	)
 	return result, nil
+}
+
+func transferFingerprint(in TransferInput) string {
+	raw := fmt.Sprintf("%s|%s|%d|%d|%s", in.FromAccountID, in.ToAccountID, in.Amount, in.Fee, in.Currency)
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
+
+func paymentFingerprint(in CreatePaymentInput) string {
+	raw := fmt.Sprintf("%s|%s|%s|%d|%s", in.ReferenceID, in.UserID, in.CarID, in.Amount, in.Currency)
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
+
+func logInfo(ctx context.Context, msg string, args ...any) {
+	slog.InfoContext(ctx, msg, withRequestID(ctx, args)...)
+}
+
+func logWarn(ctx context.Context, msg string, args ...any) {
+	slog.WarnContext(ctx, msg, withRequestID(ctx, args)...)
+}
+
+func withRequestID(ctx context.Context, args []any) []any {
+	if requestID := observability.RequestID(ctx); requestID != "" {
+		return append([]any{"request_id", requestID}, args...)
+	}
+	return args
 }

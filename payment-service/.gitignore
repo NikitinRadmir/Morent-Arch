@@ -1,6 +1,6 @@
 # Compiled binaries
 bin/
-server
+/server
 *.exe
 *.exe~
 *.dll

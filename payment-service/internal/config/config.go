@@ -7,14 +7,15 @@ import (
 )
 
 type Config struct {
-	AppEnv  string
+	AppEnv   string
 	HTTPAddr string
+	LogLevel string
 
-	KafkaEnabled           bool
-	KafkaBrokers           string
-	KafkaTopicBankCommands string
+	KafkaEnabled            bool
+	KafkaBrokers            string
+	KafkaTopicBankCommands  string
 	KafkaTopicBankResponses string
-	KafkaGroupPaymentBank  string
+	KafkaGroupPaymentBank   string
 }
 
 func Load() Config {
@@ -23,6 +24,7 @@ func Load() Config {
 	return Config{
 		AppEnv:                  getEnv("APP_ENV", "dev"),
 		HTTPAddr:                getEnv("HTTP_ADDR", ":8081"),
+		LogLevel:                getEnv("LOG_LEVEL", "info"),
 		KafkaBrokers:            brokers,
 		KafkaTopicBankCommands:  getEnv("KAFKA_TOPIC_BANK_COMMANDS", "morent.bank.commands"),
 		KafkaTopicBankResponses: getEnv("KAFKA_TOPIC_BANK_RESPONSES", "morent.bank.responses"),

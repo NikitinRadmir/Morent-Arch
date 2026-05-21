@@ -1,14 +1,20 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"morent-arch/payment-service/internal/domain"
+	"morent-arch/payment-service/internal/observability"
 	"morent-arch/payment-service/internal/repository"
 	"morent-arch/payment-service/internal/repository/memory"
 	"morent-arch/payment-service/internal/service"
@@ -20,13 +26,17 @@ type Handler struct {
 
 func NewRouter() http.Handler {
 	store := memory.NewStore()
-	h := &Handler{pay: service.NewPaymentService(store, store, store, store, store)}
+	h := &Handler{pay: service.NewPaymentService(store, store, store, store, store, store)}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", h.health)
+	mux.HandleFunc("/ready", h.ready)
 	mux.HandleFunc("/api/v1/accounts", h.accounts)
 	mux.HandleFunc("/api/v1/accounts/", h.accountByID)
 	mux.HandleFunc("/api/v1/owners/", h.ownerBalance)
+	mux.HandleFunc("/api/v1/payments", h.payments)
+	mux.HandleFunc("/api/v1/payments/", h.paymentByID)
+	mux.HandleFunc("/api/v1/transfers/batch", h.batchTransfer)
 	mux.HandleFunc("/api/v1/transfers", h.transfers)
 	mux.HandleFunc("/api/v1/transfers/", h.transferByID)
 
@@ -35,22 +45,69 @@ func NewRouter() http.Handler {
 
 func withMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		requestID := r.Header.Get("X-Request-ID")
+		if strings.TrimSpace(requestID) == "" {
+			requestID = newRequestID()
+		}
+
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key, X-Request-ID")
+		w.Header().Set("X-Request-ID", requestID)
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
+			slog.Info("http_request",
+				"request_id", requestID,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", http.StatusNoContent,
+				"duration_ms", time.Since(start).Milliseconds(),
+			)
 			return
 		}
 		if r.Body != nil {
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		}
-		next.ServeHTTP(w, r)
+		r = r.WithContext(observability.WithRequestID(r.Context(), requestID))
+		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rw, r)
+
+		level := slog.LevelInfo
+		if rw.status >= http.StatusInternalServerError {
+			level = slog.LevelError
+		} else if rw.status >= http.StatusBadRequest {
+			level = slog.LevelWarn
+		}
+		slog.Log(r.Context(), level, "http_request",
+			"request_id", requestID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"query", r.URL.RawQuery,
+			"status", rw.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+			"remote_addr", r.RemoteAddr,
+			"user_agent", r.UserAgent(),
+		)
 	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) ready(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
 func (h *Handler) accounts(w http.ResponseWriter, r *http.Request) {
@@ -134,6 +191,58 @@ func (h *Handler) ownerBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, ownerBalanceResponse{Owner: balance.Owner, Balances: balance.Balances})
+}
+
+func (h *Handler) payments(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/api/v1/payments" {
+		notFound(w)
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		h.createPayment(w, r)
+	default:
+		methodNotAllowed(w)
+	}
+}
+
+func (h *Handler) paymentByID(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/payments/")
+	parts := splitPath(path)
+	if len(parts) != 1 || parts[0] == "" {
+		notFound(w)
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	payment, err := h.pay.GetPayment(r.Context(), parts[0])
+	if err != nil {
+		domainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toPaymentResponse(payment))
+}
+
+func (h *Handler) createPayment(w http.ResponseWriter, r *http.Request) {
+	var req createPaymentRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	payment, err := h.pay.CreatePayment(r.Context(), service.CreatePaymentInput{
+		ReferenceID:    req.ReferenceID,
+		UserID:         req.UserID,
+		CarID:          req.CarID,
+		Amount:         req.Amount,
+		Currency:       req.Currency,
+		IdempotencyKey: r.Header.Get("Idempotency-Key"),
+	})
+	if err != nil {
+		domainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, toPaymentResponse(payment))
 }
 
 func (h *Handler) transfers(w http.ResponseWriter, r *http.Request) {
@@ -295,6 +404,66 @@ func (h *Handler) createTransfer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toTransferResponse(tr))
 }
 
+func (h *Handler) batchTransfer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	var req batchTransferRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	items := make([]service.BatchTransferItem, 0, len(req.Items))
+	for _, item := range req.Items {
+		items = append(items, service.BatchTransferItem{
+			FromAccountID: item.FromAccountID,
+			ToAccountID:   item.ToAccountID,
+			Amount:        item.Amount,
+			Fee:           item.Fee,
+			Currency:      item.Currency,
+			Description:   item.Description,
+		})
+	}
+	prefix := req.IdempotencyKeyPrefix
+	if prefix == "" {
+		prefix = r.Header.Get("Idempotency-Key")
+	}
+	result, err := h.pay.BatchTransfer(r.Context(), items, prefix)
+	if err != nil {
+		domainError(w, err)
+		return
+	}
+	resp := batchTransferResponse{
+		Total:      result.Total,
+		Successful: result.Successful,
+		Failed:     result.Failed,
+		Transfers:  make([]transferResponse, 0, len(result.Transfers)),
+		Errors:     make([]batchErrorResponse, 0, len(result.Errors)),
+	}
+	for _, tr := range result.Transfers {
+		resp.Transfers = append(resp.Transfers, toTransferResponse(tr))
+	}
+	for _, item := range result.Errors {
+		resp.Errors = append(resp.Errors, batchErrorResponse{
+			Index: item.Index,
+			Item: batchTransferItem{
+				FromAccountID: item.Item.FromAccountID,
+				ToAccountID:   item.Item.ToAccountID,
+				Amount:        item.Item.Amount,
+				Fee:           item.Item.Fee,
+				Currency:      item.Item.Currency,
+				Description:   item.Item.Description,
+			},
+			Error: item.Error,
+		})
+	}
+	status := http.StatusCreated
+	if resp.Failed > 0 {
+		status = http.StatusUnprocessableEntity
+	}
+	writeJSON(w, status, resp)
+}
+
 func (h *Handler) listTransfers(w http.ResponseWriter, r *http.Request) {
 	filter, ok := parseTransferFilter(w, r)
 	if !ok {
@@ -387,6 +556,11 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 		badRequest(w, "invalid json: "+err.Error())
 		return false
 	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		badRequest(w, "invalid json: multiple JSON values")
+		return false
+	}
 	return true
 }
 
@@ -400,9 +574,9 @@ func domainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: err.Error()})
-	case errors.Is(err, domain.ErrConflict):
+	case errors.Is(err, domain.ErrConflict), errors.Is(err, domain.ErrIdempotencyKeyConflict):
 		writeJSON(w, http.StatusConflict, errorResponse{Error: err.Error()})
-	case errors.Is(err, domain.ErrInsufficientFunds), errors.Is(err, domain.ErrCurrencyMismatch), errors.Is(err, domain.ErrSameAccount), errors.Is(err, domain.ErrInvalidAmount), errors.Is(err, domain.ErrAccountClosed), errors.Is(err, domain.ErrUnsupportedCurrency), errors.Is(err, domain.ErrInvalidOwner), errors.Is(err, domain.ErrTransferNotPosted), errors.Is(err, domain.ErrTransferAlreadyReversed), errors.Is(err, domain.ErrLimitExceeded), errors.Is(err, domain.ErrInvalidFee):
+	case errors.Is(err, domain.ErrInsufficientFunds), errors.Is(err, domain.ErrCurrencyMismatch), errors.Is(err, domain.ErrSameAccount), errors.Is(err, domain.ErrInvalidAmount), errors.Is(err, domain.ErrAccountClosed), errors.Is(err, domain.ErrUnsupportedCurrency), errors.Is(err, domain.ErrInvalidOwner), errors.Is(err, domain.ErrTransferNotPosted), errors.Is(err, domain.ErrTransferAlreadyReversed), errors.Is(err, domain.ErrLimitExceeded), errors.Is(err, domain.ErrInvalidFee), errors.Is(err, domain.ErrInvalidPayment):
 		writeJSON(w, http.StatusUnprocessableEntity, errorResponse{Error: err.Error()})
 	default:
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal"})
@@ -418,5 +592,14 @@ func notFound(w http.ResponseWriter) {
 func methodNotAllowed(w http.ResponseWriter) {
 	writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method not allowed"})
 }
-func splitPath(path string) []string           { return strings.Split(strings.Trim(path, "/"), "/") }
-func urlPathUnescape(s string) (string, error) { return strings.ReplaceAll(s, "%20", " "), nil }
+func splitPath(path string) []string { return strings.Split(strings.Trim(path, "/"), "/") }
+func urlPathUnescape(s string) (string, error) {
+	return url.PathUnescape(s)
+}
+func newRequestID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	return hex.EncodeToString(b[:])
+}

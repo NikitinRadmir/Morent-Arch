@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	morentevents "morent-events"
 	"morent-arch/payment-service/internal/domain"
 	"morent-arch/payment-service/internal/service"
+	morentevents "morent-events"
 
 	"github.com/google/uuid"
 )

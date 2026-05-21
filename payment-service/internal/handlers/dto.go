@@ -26,6 +26,28 @@ type transferRequest struct {
 	Currency      string       `json:"currency"`
 }
 
+type batchTransferRequest struct {
+	IdempotencyKeyPrefix string              `json:"idempotency_key_prefix,omitempty"`
+	Items                []batchTransferItem `json:"items"`
+}
+
+type batchTransferItem struct {
+	FromAccountID string       `json:"from_account_id"`
+	ToAccountID   string       `json:"to_account_id"`
+	Amount        domain.Money `json:"amount_minor"`
+	Fee           domain.Money `json:"fee_minor,omitempty"`
+	Currency      string       `json:"currency"`
+	Description   string       `json:"description,omitempty"`
+}
+
+type createPaymentRequest struct {
+	ReferenceID string       `json:"reference_id"`
+	UserID      string       `json:"user_id"`
+	CarID       string       `json:"car_id"`
+	Amount      domain.Money `json:"amount_minor"`
+	Currency    string       `json:"currency"`
+}
+
 type accountResponse struct {
 	ID           string       `json:"id"`
 	Owner        string       `json:"owner"`
@@ -91,6 +113,32 @@ type transferStatsResponse struct {
 	ToDate            string       `json:"to_date,omitempty"`
 }
 
+type batchTransferResponse struct {
+	Total      int                  `json:"total"`
+	Successful int                  `json:"successful"`
+	Failed     int                  `json:"failed"`
+	Transfers  []transferResponse   `json:"transfers"`
+	Errors     []batchErrorResponse `json:"errors"`
+}
+
+type batchErrorResponse struct {
+	Index int               `json:"index"`
+	Item  batchTransferItem `json:"item,omitempty"`
+	Error string            `json:"error"`
+}
+
+type paymentResponse struct {
+	ID          string       `json:"id"`
+	ReferenceID string       `json:"reference_id"`
+	UserID      string       `json:"user_id"`
+	CarID       string       `json:"car_id"`
+	Amount      domain.Money `json:"amount_minor"`
+	Currency    string       `json:"currency"`
+	Status      string       `json:"status"`
+	CreatedAt   string       `json:"created_at"`
+	ProcessedAt string       `json:"processed_at,omitempty"`
+}
+
 type errorResponse struct {
 	Error string `json:"error"`
 }
@@ -110,6 +158,23 @@ func toTransferResponse(tr *domain.Transfer) transferResponse {
 	}
 	if tr.ReversedAt != nil {
 		resp.ReversedAt = tr.ReversedAt.Format(time.RFC3339Nano)
+	}
+	return resp
+}
+
+func toPaymentResponse(p *domain.Payment) paymentResponse {
+	resp := paymentResponse{
+		ID:          p.ID,
+		ReferenceID: p.ReferenceID,
+		UserID:      p.UserID,
+		CarID:       p.CarID,
+		Amount:      p.Amount,
+		Currency:    p.Currency,
+		Status:      string(p.Status),
+		CreatedAt:   p.CreatedAt.Format(time.RFC3339Nano),
+	}
+	if p.ProcessedAt != nil {
+		resp.ProcessedAt = p.ProcessedAt.Format(time.RFC3339Nano)
 	}
 	return resp
 }
