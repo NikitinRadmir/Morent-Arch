@@ -1,5 +1,6 @@
 ﻿using EmailService.Core.Contracts;
 using EmailService.Core.Extensions;
+using EmailService.Infrastructure.Messaging;
 using EmailService.Infrastructure.Options;
 using EmailService.Infrastructure.Persistence;
 using EmailService.Infrastructure.Providers;
@@ -21,6 +22,7 @@ public static class ServiceCollectionExtensions
         // Options
         services.Configure<TemplatesOptions>(config.GetSection("Templates"));
         services.Configure<SendGridOptions>(config.GetSection("SendGrid"));
+        services.Configure<KafkaOptions>(config.GetSection("Kafka"));
 
         // Queue
         services.AddSingleton<IEmailQueue, ChannelEmailQueue>();
@@ -34,9 +36,24 @@ public static class ServiceCollectionExtensions
             opt.UseSqlite(config.GetConnectionString("EmailDb") ?? "Data Source=email.db"));
         services.AddScoped<IEmailStatusStore, EfEmailStatusStore>();
 
-        // Provider
-        services.AddScoped<IEmailProvider, SendGridEmailProvider>();
+        // Provider: SendGrid при наличии ключа, иначе dev-лог (без реальной доставки)
+        var sendGridKey = config.GetSection("SendGrid")["ApiKey"];
+        if (string.IsNullOrWhiteSpace(sendGridKey))
+        {
+            services.AddScoped<IEmailProvider, DevLoggingEmailProvider>();
+        }
+        else
+        {
+            services.AddScoped<IEmailProvider, SendGridEmailProvider>();
+        }
 
+        return services;
+    }
+
+    public static IServiceCollection AddEmailKafkaConsumer(this IServiceCollection services)
+    {
+        services.AddScoped<MorentEmailIngestion>();
+        services.AddHostedService<KafkaEmailConsumer>();
         return services;
     }
 }

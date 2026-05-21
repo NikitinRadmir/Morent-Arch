@@ -359,13 +359,6 @@ const PayForm = ({ car, setTotalAmount }) => {
                 body: JSON.stringify(rentalPayload),
             });
 
-            // Optional: keep existing email notification flow
-            const formData = new FormData(e.target);
-            fetch(`${API_BASE_URL}/SendEmail/SendEmail/${car.id}`, {
-                method: 'POST',
-                body: formData,
-            }).catch(() => {});
-
             // Redirect to success page
             toast.success('Бронирование успешно оформлено');
             navigate('/rental-success', {

@@ -23,6 +23,7 @@ func NewModule(
 	sessionRepo *repository.SessionRepository,
 	logService *service.LogService,
 	events messaging.UserEventPublisher,
+	emailNotifier *service.EmailNotifier,
 	cfg *config.Config,
 	log *slog.Logger,
 ) Outputs {
@@ -30,6 +31,7 @@ func NewModule(
 		userRepo,
 		sessionRepo,
 		events,
+		emailNotifier,
 		cfg.MorentCompanyName,
 		log,
 	)

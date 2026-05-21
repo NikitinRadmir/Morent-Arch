@@ -41,17 +41,17 @@ func (r *RentalRepository) GetByID(id uint) (*models.Rental, error) {
 // CreateIfNoOverlap атомарно проверяет пересечение дат и создаёт бронь.
 func (r *RentalRepository) CreateIfNoOverlap(rental *models.Rental, startDate, endDate time.Time) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		var count int64
+		var overlap models.Rental
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Model(&models.Rental{}).
 			Where("car_id = ?", rental.CarID).
 			Where("start_date < ? AND end_date > ?", endDate, startDate).
-			Count(&count).Error
-		if err != nil {
-			return err
-		}
-		if count > 0 {
+			Limit(1).
+			Take(&overlap).Error
+		if err == nil {
 			return ErrBookingOverlap
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
 		}
 		return tx.Create(rental).Error
 	})

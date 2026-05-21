@@ -41,6 +41,7 @@ type Config struct {
 	KafkaEnabled              bool
 	KafkaBrokers              string
 	KafkaTopicUsers           string
+	KafkaTopicEmails          string
 	KafkaTopicBankCommands    string
 	KafkaTopicBankResponses   string
 	KafkaGroupMorentBank      string
@@ -78,6 +79,7 @@ func LoadFromEnv() (*Config, error) {
 		CarsCacheTTLSeconds:  getEnvInt("CARS_CACHE_TTL_SEC", 60),
 		KafkaBrokers:            getEnv("KAFKA_BROKERS", ""),
 		KafkaTopicUsers:         getEnv("KAFKA_TOPIC_USERS", "morent.users"),
+		KafkaTopicEmails:        getEnv("KAFKA_TOPIC_EMAILS", "morent.emails"),
 		KafkaTopicBankCommands:  getEnv("KAFKA_TOPIC_BANK_COMMANDS", "morent.bank.commands"),
 		KafkaTopicBankResponses: getEnv("KAFKA_TOPIC_BANK_RESPONSES", "morent.bank.responses"),
 		KafkaGroupMorentBank:    getEnv("KAFKA_GROUP_MORENT_BANK", "morent-backend-bank"),

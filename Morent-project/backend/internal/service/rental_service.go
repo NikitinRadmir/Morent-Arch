@@ -24,12 +24,14 @@ type RentalCarRepository interface {
 type RentalService struct {
 	rentalRepo RentalRepository
 	carRepo    RentalCarRepository
+	emails     *EmailNotifier
 }
 
-func NewRentalService(rentalRepo RentalRepository, carRepo RentalCarRepository) *RentalService {
+func NewRentalService(rentalRepo RentalRepository, carRepo RentalCarRepository, emails *EmailNotifier) *RentalService {
 	return &RentalService{
 		rentalRepo: rentalRepo,
 		carRepo:    carRepo,
+		emails:     emails,
 	}
 }
 
@@ -76,6 +78,9 @@ func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time
 	}
 
 	resp := rental.ToResponse()
+	if s.emails != nil {
+		s.emails.NotifyBookingConfirmation(userID, &resp)
+	}
 	return &resp, nil
 }
 

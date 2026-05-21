@@ -54,6 +54,8 @@ var Module = fx.Options(
 		handlers.NewMediaHandler,
 		provideGeneratorClient,
 		provideUserEventPublisher,
+		provideEmailEventPublisher,
+		service.NewEmailNotifier,
 		provideBankGateway,
 		handlers.NewPasswordHandler,
 		buildContainer,
@@ -103,6 +105,19 @@ func provideUserEventPublisher(cfg *config.Config, log *slog.Logger) messaging.U
 	return pub
 }
 
+func provideEmailEventPublisher(cfg *config.Config, log *slog.Logger) messaging.EmailEventPublisher {
+	if !cfg.KafkaEnabled {
+		return messaging.EmailNoopPublisher{}
+	}
+	pub, err := kafkamsg.NewEmailPublisher(cfg.KafkaBrokers, cfg.KafkaTopicEmails, log)
+	if err != nil {
+		log.Warn("kafka email publisher disabled", "error", err)
+		return messaging.EmailNoopPublisher{}
+	}
+	log.Info("kafka email publisher enabled", "topic", cfg.KafkaTopicEmails, "brokers", cfg.KafkaBrokers)
+	return pub
+}
+
 func provideBankGateway(cfg *config.Config, log *slog.Logger) messaging.BankGateway {
 	if !cfg.KafkaEnabled || strings.TrimSpace(cfg.KafkaBrokers) == "" {
 		return messaging.BankNoopGateway{}
@@ -149,17 +164,24 @@ func registerBankKafkaHook(lc fx.Lifecycle, cfg *config.Config, gw messaging.Ban
 	})
 }
 
-func registerKafkaHook(lc fx.Lifecycle, cfg *config.Config, pub messaging.UserEventPublisher) {
+func registerKafkaHook(lc fx.Lifecycle, cfg *config.Config, pub messaging.UserEventPublisher, emailPub messaging.EmailEventPublisher) {
 	if !cfg.KafkaEnabled {
-		return
-	}
-	closer, ok := pub.(interface{ Close() error })
-	if !ok {
 		return
 	}
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			return closer.Close()
+			var err error
+			if closer, ok := pub.(interface{ Close() error }); ok {
+				if e := closer.Close(); e != nil {
+					err = e
+				}
+			}
+			if closer, ok := emailPub.(interface{ Close() error }); ok {
+				if e := closer.Close(); e != nil && err == nil {
+					err = e
+				}
+			}
+			return err
 		},
 	})
 }

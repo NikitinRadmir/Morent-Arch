@@ -13,15 +13,26 @@ public class EfEmailStatusStore : IEmailStatusStore
 
     public async Task MarkStatusAsync(string correlationId, EmailStatus status, string? details = null, CancellationToken ct = default)
     {
-        var log = await _db.EmailLogs.FindAsync([correlationId], ct)
-                  ?? new EmailLog { CorrelationId = correlationId };
+        var log = await _db.EmailLogs.FindAsync([correlationId], ct);
+        if (log == null)
+        {
+            log = new EmailLog
+            {
+                CorrelationId = correlationId,
+                CreatedAt = DateTime.UtcNow,
+                Attempts = 1,
+            };
+            _db.EmailLogs.Add(log);
+        }
+        else if (log.Attempts == 0)
+        {
+            log.Attempts = 1;
+        }
 
         log.Status = status;
         log.ErrorDetails = details;
         log.UpdatedAt = DateTime.UtcNow;
-        if (log.Attempts == 0) log.Attempts = 1;
 
-        _db.EmailLogs.Update(log);
         await _db.SaveChangesAsync(ct);
     }
 

@@ -31,8 +31,12 @@ try
 
     builder.Logging.AddSerilog(dispose: true);
 
+    builder.Services.Configure<HostOptions>(o =>
+        o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
+
     builder.Services.AddEmailInfrastructure(builder.Configuration);
-    builder.Services.AddSingleton<EmailDispatcher>();
+    builder.Services.AddEmailKafkaConsumer();
+    builder.Services.AddScoped<EmailDispatcher>();
     builder.Services.AddHostedService<Worker>();
 
     var host = builder.Build();

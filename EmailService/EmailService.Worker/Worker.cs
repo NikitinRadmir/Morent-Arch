@@ -2,6 +2,7 @@ using EmailService.Core.Contracts;
 using EmailService.Core.Models;
 using EmailService.Worker.Configuration;
 using EmailService.Worker.Consumers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,19 +12,19 @@ namespace EmailService.Worker;
 public class Worker : BackgroundService
 {
     private readonly IEmailQueue _queue;
-    private readonly EmailDispatcher _dispatcher;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly WorkerOptions _options;
     private readonly ILogger<Worker> _logger;
     private readonly SemaphoreSlim _semaphore;
 
     public Worker(
         IEmailQueue queue,
-        EmailDispatcher dispatcher,
+        IServiceScopeFactory scopeFactory,
         IOptions<WorkerOptions> options,
         ILogger<Worker> logger)
     {
         _queue = queue;
-        _dispatcher = dispatcher;
+        _scopeFactory = scopeFactory;
         _options = options.Value;
         _logger = logger;
         _semaphore = new SemaphoreSlim(_options.MaxConcurrency);
@@ -41,7 +42,9 @@ public class Worker : BackgroundService
             {
                 try
                 {
-                    await _dispatcher.ProcessAsync(request, stoppingToken);
+                    using var scope = _scopeFactory.CreateScope();
+                    var dispatcher = scope.ServiceProvider.GetRequiredService<EmailDispatcher>();
+                    await dispatcher.ProcessAsync(request, stoppingToken);
                 }
                 catch (Exception ex)
                 {

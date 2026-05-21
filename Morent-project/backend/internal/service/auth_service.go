@@ -23,6 +23,7 @@ type AuthService struct {
 	userRepo    AuthUserRepository
 	sessionRepo AuthSessionRepository
 	events      messaging.UserEventPublisher
+	emails      *EmailNotifier
 	companyName string
 	log         *slog.Logger
 }
@@ -45,6 +46,7 @@ func NewAuthService(
 	userRepo AuthUserRepository,
 	sessionRepo AuthSessionRepository,
 	events messaging.UserEventPublisher,
+	emails *EmailNotifier,
 	companyName string,
 	log *slog.Logger,
 ) *AuthService {
@@ -58,6 +60,7 @@ func NewAuthService(
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
 		events:      events,
+		emails:      emails,
 		companyName: strings.TrimSpace(companyName),
 		log:         log,
 	}
@@ -97,6 +100,9 @@ func (s *AuthService) Register(name, email, password string) (*models.UserRespon
 	}
 
 	s.publishRegistered(user)
+	if s.emails != nil {
+		s.emails.NotifyWelcomeRegistered(&user)
+	}
 
 	resp := user.ToResponse()
 	token, errSession := s.createSession(user.ID)
@@ -122,6 +128,10 @@ func (s *AuthService) Login(email, password string) (*models.UserResponse, strin
 
 	if errCompare := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); errCompare != nil {
 		return nil, "", ErrInvalidCredentials
+	}
+
+	if s.emails != nil {
+		s.emails.NotifyLogin(user)
 	}
 
 	resp := user.ToResponse()
