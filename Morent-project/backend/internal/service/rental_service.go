@@ -2,14 +2,15 @@ package service
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"morent-backend/internal/models"
+	"morent-backend/internal/repository"
 )
 
 type RentalRepository interface {
-	HasOverlap(carID uint, startDate, endDate time.Time) (bool, error)
-	Create(rental *models.Rental) error
+	CreateIfNoOverlap(rental *models.Rental, startDate, endDate time.Time) error
 	ListByUser(userID uint) ([]models.Rental, error)
 	ListByCar(carID uint) ([]models.Rental, error)
 	GetByID(id uint) (*models.Rental, error)
@@ -36,7 +37,7 @@ var ErrInvalidRentalPeriod = errors.New("invalid rental period")
 var ErrCarAlreadyBooked = errors.New("car already booked for selected period")
 var ErrForbidden = errors.New("forbidden")
 
-func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time.Time, totalPrice float64) (*models.RentalResponse, error) {
+func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time.Time) (*models.RentalResponse, error) {
 	car, err := s.carRepo.GetByID(int(carID))
 	if err != nil {
 		return nil, err
@@ -49,12 +50,13 @@ func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time
 		return nil, ErrInvalidRentalPeriod
 	}
 
-	hasOverlap, errOverlap := s.rentalRepo.HasOverlap(carID, startDate, endDate)
-	if errOverlap != nil {
-		return nil, errOverlap
+	days := endDate.Sub(startDate).Hours() / 24
+	if days < 1 {
+		days = 1
 	}
-	if hasOverlap {
-		return nil, ErrCarAlreadyBooked
+	totalPrice := math.Round(car.Price*days*100) / 100
+	if totalPrice <= 0 {
+		return nil, ErrInvalidRentalPeriod
 	}
 
 	rental := models.Rental{
@@ -66,7 +68,10 @@ func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time
 		Car:        *car,
 	}
 
-	if errCreate := s.rentalRepo.Create(&rental); errCreate != nil {
+	if errCreate := s.rentalRepo.CreateIfNoOverlap(&rental, startDate, endDate); errCreate != nil {
+		if errors.Is(errCreate, repository.ErrBookingOverlap) {
+			return nil, ErrCarAlreadyBooked
+		}
 		return nil, errCreate
 	}
 

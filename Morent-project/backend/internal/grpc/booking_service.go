@@ -34,7 +34,7 @@ func (s *BookingServiceServer) CreateBooking(ctx context.Context, in *bookingpb.
 	start := in.StartDate.AsTime()
 	end := in.EndDate.AsTime()
 
-	r, err := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end, in.TotalPrice)
+	r, err := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end)
 	if err != nil {
 		switch err {
 		case service.ErrCarNotFound:

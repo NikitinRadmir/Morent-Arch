@@ -1,12 +1,16 @@
 package repository
 
 import (
+	"errors"
 	"time"
 
 	"morent-backend/internal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrBookingOverlap = errors.New("booking overlap")
 
 type RentalRepository struct {
 	db *gorm.DB
@@ -32,6 +36,25 @@ func (r *RentalRepository) GetByID(id uint) (*models.Rental, error) {
 		return nil, err
 	}
 	return &rental, nil
+}
+
+// CreateIfNoOverlap атомарно проверяет пересечение дат и создаёт бронь.
+func (r *RentalRepository) CreateIfNoOverlap(rental *models.Rental, startDate, endDate time.Time) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Model(&models.Rental{}).
+			Where("car_id = ?", rental.CarID).
+			Where("start_date < ? AND end_date > ?", endDate, startDate).
+			Count(&count).Error
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return ErrBookingOverlap
+		}
+		return tx.Create(rental).Error
+	})
 }
 
 func (r *RentalRepository) Create(rental *models.Rental) error {
