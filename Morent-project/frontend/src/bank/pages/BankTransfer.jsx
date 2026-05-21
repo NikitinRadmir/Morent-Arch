@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { BANK_UNAVAILABLE_MSG } from '../constants';
+import { useBank } from '../context/BankContext';
 
 const BankTransfer = () => {
+  const navigate = useNavigate();
+  const { transfer, isAuthenticated } = useBank();
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Войдите в банк');
+      navigate('/bank/login');
+      return;
+    }
     if (!confirmed) {
       toast.error('Подтвердите перевод');
       return;
@@ -20,7 +28,15 @@ const BankTransfer = () => {
       toast.error('Заполните телефон и сумму');
       return;
     }
-    toast.error(BANK_UNAVAILABLE_MSG);
+    setSubmitting(true);
+    try {
+      await transfer(phone, amount);
+      navigate('/bank');
+    } catch (err) {
+      toast.error(err.message || 'Ошибка перевода');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -77,8 +93,8 @@ const BankTransfer = () => {
                 Я уверен в своём решении перевести указанную сумму на указанный счёт
               </label>
             </div>
-            <button type="submit" className="btn mb-btn-submit">
-              Перевести
+            <button type="submit" className="btn mb-btn-submit" disabled={submitting}>
+              {submitting ? 'Перевод…' : 'Перевести'}
             </button>
           </form>
         </div>

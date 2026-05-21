@@ -1,21 +1,33 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { BANK_UNAVAILABLE_MSG } from '../constants';
+import { useBank } from '../context/BankContext';
 
 const BankLogin = () => {
+  const navigate = useNavigate();
+  const { login } = useBank();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!phone.trim() || !password) {
       toast.error('Заполните телефон и пароль');
       return;
     }
-    toast.error(BANK_UNAVAILABLE_MSG);
+    setSubmitting(true);
+    try {
+      await login(phone, password);
+      toast.success('Добро пожаловать');
+      navigate('/bank');
+    } catch (err) {
+      toast.error(err.message || 'Ошибка входа');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -51,8 +63,8 @@ const BankLogin = () => {
                 autoComplete="current-password"
               />
             </div>
-            <button type="submit" className="btn mb-btn-submit">
-              Войти
+            <button type="submit" className="btn mb-btn-submit" disabled={submitting}>
+              {submitting ? 'Вход…' : 'Войти'}
             </button>
           </form>
           <p className="text-center mt-3 mb-0 mb-link-muted">

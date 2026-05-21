@@ -38,14 +38,18 @@ type Config struct {
 	RedisDB               int
 	CarsCacheTTLSeconds   int
 
-	KafkaEnabled      bool
-	KafkaBrokers      string
-	KafkaTopicUsers   string
-	MorentCompanyName string
+	KafkaEnabled              bool
+	KafkaBrokers              string
+	KafkaTopicUsers           string
+	KafkaTopicBankCommands    string
+	KafkaTopicBankResponses   string
+	KafkaGroupMorentBank      string
+	MorentCompanyName         string
 }
 
 // LoadFromEnv читает конфигурацию из окружения. Файл config.json не используется.
 func LoadFromEnv() (*Config, error) {
+	loadDotEnv()
 	baseURL := strings.TrimRight(getEnv("AGGREGATOR_BASE_URL", "http://localhost:8080"), "/")
 
 	cfg := &Config{
@@ -72,9 +76,12 @@ func LoadFromEnv() (*Config, error) {
 		RedisPassword:        getEnv("REDIS_PASSWORD", ""),
 		RedisDB:              getEnvInt("REDIS_DB", 0),
 		CarsCacheTTLSeconds:  getEnvInt("CARS_CACHE_TTL_SEC", 60),
-		KafkaBrokers:         getEnv("KAFKA_BROKERS", ""),
-		KafkaTopicUsers:      getEnv("KAFKA_TOPIC_USERS", "morent.users"),
-		MorentCompanyName:    getEnv("MORENT_COMPANY_NAME", "Morent"),
+		KafkaBrokers:            getEnv("KAFKA_BROKERS", ""),
+		KafkaTopicUsers:         getEnv("KAFKA_TOPIC_USERS", "morent.users"),
+		KafkaTopicBankCommands:  getEnv("KAFKA_TOPIC_BANK_COMMANDS", "morent.bank.commands"),
+		KafkaTopicBankResponses: getEnv("KAFKA_TOPIC_BANK_RESPONSES", "morent.bank.responses"),
+		KafkaGroupMorentBank:    getEnv("KAFKA_GROUP_MORENT_BANK", "morent-backend-bank"),
+		MorentCompanyName:       getEnv("MORENT_COMPANY_NAME", "Morent"),
 	}
 	cfg.KafkaEnabled = getEnvBool("KAFKA_ENABLED", cfg.KafkaBrokers != "")
 	cfg.MinioUseSSL = getEnvBool("MINIO_USE_SSL", false)

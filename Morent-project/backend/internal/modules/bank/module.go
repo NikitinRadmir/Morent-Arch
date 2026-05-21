@@ -15,9 +15,7 @@ type Outputs struct {
 	Handler *handlers.BankHandler
 }
 
-func NewModule(cfg *config.Config) Outputs {
-	_ = cfg
-	gateway := messaging.BankNoopGateway{}
+func NewModule(cfg *config.Config, gateway messaging.BankGateway) Outputs {
 	bankService := service.NewBankService(gateway)
 	handler := handlers.NewBankHandler(bankService, cfg)
 	return Outputs{

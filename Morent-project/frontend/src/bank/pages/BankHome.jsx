@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import BankHeader from '../components/BankHeader';
+import { useBank } from '../context/BankContext';
 
 const offers = [
   {
@@ -20,7 +21,19 @@ const offers = [
   },
 ];
 
+const formatMoney = (value) => {
+  if (value == null || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return new Intl.NumberFormat('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+};
+
 const BankHome = () => {
+  const { profile, isAuthenticated, loading } = useBank();
+
   return (
     <>
       <BankHeader />
@@ -28,7 +41,7 @@ const BankHome = () => {
         <section className="mb-hero-balance text-center text-md-start">
           <p className="mb-hero-balance-label mb-0">Доступно на счёте</p>
           <p className="mb-hero-balance-value mb-0">
-            —
+            {loading ? '…' : formatMoney(profile?.balance)}
             <span className="mb-hero-balance-currency">₽</span>
           </p>
         </section>
@@ -49,6 +62,12 @@ const BankHome = () => {
         </section>
 
         <p className="text-center mb-link-muted mb-0">
+          {isAuthenticated ? (
+            <>
+              Вы вошли как {profile?.phone}
+              <br />
+            </>
+          ) : null}
           <Link to="/bank/login">Вход</Link>
           &nbsp;·&nbsp;
           <Link to="/bank/register">Регистрация</Link>

@@ -3,6 +3,7 @@ package di
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"morent-backend/internal/cache"
@@ -53,12 +54,14 @@ var Module = fx.Options(
 		handlers.NewMediaHandler,
 		provideGeneratorClient,
 		provideUserEventPublisher,
+		provideBankGateway,
 		handlers.NewPasswordHandler,
 		buildContainer,
 	),
 	fx.Invoke(setSlogDefault),
 	fx.Invoke(registerRedisHook),
 	fx.Invoke(registerKafkaHook),
+	fx.Invoke(registerBankKafkaHook),
 )
 
 func provideCarCache(cfg *config.Config, rdb *redis.Client) *cache.CarCache {
@@ -98,6 +101,52 @@ func provideUserEventPublisher(cfg *config.Config, log *slog.Logger) messaging.U
 		return messaging.NoopPublisher{}
 	}
 	return pub
+}
+
+func provideBankGateway(cfg *config.Config, log *slog.Logger) messaging.BankGateway {
+	if !cfg.KafkaEnabled || strings.TrimSpace(cfg.KafkaBrokers) == "" {
+		return messaging.BankNoopGateway{}
+	}
+	gw, err := kafkamsg.NewBankGateway(
+		cfg.KafkaBrokers,
+		cfg.KafkaTopicBankCommands,
+		cfg.KafkaTopicBankResponses,
+		cfg.KafkaGroupMorentBank,
+		log,
+	)
+	if err != nil {
+		log.Warn("bank kafka gateway disabled", "error", err)
+		return messaging.BankNoopGateway{}
+	}
+	return gw
+}
+
+func registerBankKafkaHook(lc fx.Lifecycle, cfg *config.Config, gw messaging.BankGateway, log *slog.Logger) {
+	if !cfg.KafkaEnabled {
+		return
+	}
+	runner, ok := gw.(interface {
+		Run(context.Context) error
+		Close() error
+	})
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				if err := runner.Run(ctx); err != nil && ctx.Err() == nil {
+					log.Warn("bank kafka consumer stopped", "error", err)
+				}
+			}()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			cancel()
+			return runner.Close()
+		},
+	})
 }
 
 func registerKafkaHook(lc fx.Lifecycle, cfg *config.Config, pub messaging.UserEventPublisher) {

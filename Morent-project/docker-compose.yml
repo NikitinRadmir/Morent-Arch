@@ -104,6 +104,9 @@ services:
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
       KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
       KAFKA_TOPIC_USERS: ${KAFKA_TOPIC_USERS:-morent.users}
+      KAFKA_TOPIC_BANK_COMMANDS: ${KAFKA_TOPIC_BANK_COMMANDS:-morent.bank.commands}
+      KAFKA_TOPIC_BANK_RESPONSES: ${KAFKA_TOPIC_BANK_RESPONSES:-morent.bank.responses}
+      KAFKA_GROUP_MORENT_BANK: ${KAFKA_GROUP_MORENT_BANK:-morent-backend-bank}
       MORENT_COMPANY_NAME: ${MORENT_COMPANY_NAME:-Morent}
     extra_hosts:
       - "host.docker.internal:host-gateway"

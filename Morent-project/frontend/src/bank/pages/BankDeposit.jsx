@@ -1,19 +1,35 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
-import { BANK_UNAVAILABLE_MSG } from '../constants';
+import { useBank } from '../context/BankContext';
 
 const BankDeposit = () => {
+  const navigate = useNavigate();
+  const { deposit, isAuthenticated } = useBank();
   const [amount, setAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Войдите в банк');
+      navigate('/bank/login');
+      return;
+    }
     if (!amount || Number(amount) <= 0) {
       toast.error('Укажите корректную сумму');
       return;
     }
-    toast.error(BANK_UNAVAILABLE_MSG);
+    setSubmitting(true);
+    try {
+      await deposit(amount);
+      navigate('/bank');
+    } catch (err) {
+      toast.error(err.message || 'Ошибка пополнения');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,8 +62,8 @@ const BankDeposit = () => {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <button type="submit" className="btn mb-btn-submit">
-              Пополнить
+            <button type="submit" className="btn mb-btn-submit" disabled={submitting}>
+              {submitting ? 'Пополнение…' : 'Пополнить'}
             </button>
           </form>
         </div>

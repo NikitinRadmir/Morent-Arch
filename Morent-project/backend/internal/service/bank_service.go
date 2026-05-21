@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"morent-backend/internal/bank"
@@ -44,11 +45,61 @@ func (s *BankService) unavailable() error {
 	return ErrBankUnavailable
 }
 
-func (s *BankService) publish(ctx context.Context, cmd messaging.BankCommand) error {
+func (s *BankService) request(ctx context.Context, cmd messaging.BankCommand) (messaging.BankResponse, error) {
 	if err := s.unavailable(); err != nil {
+		return messaging.BankResponse{}, err
+	}
+	if cmd.RequestID == "" {
+		cmd.RequestID = uuid.NewString()
+	}
+	if cmd.SentAt.IsZero() {
+		cmd.SentAt = time.Now().UTC()
+	}
+	resp, err := s.gateway.Request(ctx, cmd)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return messaging.BankResponse{}, ErrBankUnavailable
+		}
+		return messaging.BankResponse{}, err
+	}
+	if err := mapBankResponseError(resp); err != nil {
+		return resp, err
+	}
+	return resp, nil
+}
+
+func mapBankResponseError(resp messaging.BankResponse) error {
+	if resp.OK {
+		return nil
+	}
+	err := resp.AsError()
+	return mapBankGatewayError(err)
+}
+
+func mapBankGatewayError(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch err.(type) {
+	case messaging.ErrBankPhoneExists:
+		return ErrBankPhoneExists
+	case messaging.ErrBankInvalidCredentials:
+		return ErrBankInvalidCredentials
+	case messaging.ErrBankSessionInvalid:
+		return ErrBankSessionInvalid
+	case messaging.ErrBankInvalidPhone:
+		return ErrBankInvalidPhone
+	case messaging.ErrBankInvalidAmount:
+		return ErrBankInvalidAmount
+	case messaging.ErrBankInsufficientFunds:
+		return ErrBankInsufficientFunds
+	case messaging.ErrBankRecipientNotFound:
+		return ErrBankRecipientNotFound
+	case messaging.ErrBankSameAccount:
+		return ErrBankSameAccount
+	default:
 		return err
 	}
-	return s.gateway.Publish(ctx, cmd)
 }
 
 func NormalizeBankPhone(raw string) (string, error) {
@@ -73,59 +124,67 @@ func NormalizeBankPhone(raw string) (string, error) {
 }
 
 func (s *BankService) Register(phone, password, displayName string) (*bank.ProfileResponse, string, error) {
-	if _, err := NormalizeBankPhone(phone); err != nil {
+	normalized, err := NormalizeBankPhone(phone)
+	if err != nil {
 		return nil, "", err
 	}
 	if len(strings.TrimSpace(password)) < 6 {
 		return nil, "", errors.New("password must be at least 6 characters")
 	}
-	return nil, "", s.publish(context.Background(), messaging.BankCommand{
+	resp, err := s.request(context.Background(), messaging.BankCommand{
 		Type:        messaging.BankCmdRegister,
-		RequestID:   uuid.NewString(),
-		Phone:       phone,
+		Phone:       normalized,
 		Password:    password,
 		DisplayName: displayName,
 	})
+	if err != nil {
+		return nil, "", err
+	}
+	return resp.Profile, resp.Token, nil
 }
 
 func (s *BankService) Login(phone, password string) (*bank.ProfileResponse, string, error) {
-	if _, err := NormalizeBankPhone(phone); err != nil {
+	normalized, err := NormalizeBankPhone(phone)
+	if err != nil {
 		return nil, "", err
 	}
 	if strings.TrimSpace(password) == "" {
 		return nil, "", ErrBankInvalidCredentials
 	}
-	return nil, "", s.publish(context.Background(), messaging.BankCommand{
-		Type:      messaging.BankCmdLogin,
-		RequestID: uuid.NewString(),
-		Phone:     phone,
-		Password:  password,
+	resp, err := s.request(context.Background(), messaging.BankCommand{
+		Type:     messaging.BankCmdLogin,
+		Phone:    normalized,
+		Password: password,
 	})
+	if err != nil {
+		return nil, "", err
+	}
+	return resp.Profile, resp.Token, nil
 }
 
 func (s *BankService) Logout(token string) error {
 	if strings.TrimSpace(token) == "" {
 		return ErrBankSessionInvalid
 	}
-	return s.publish(context.Background(), messaging.BankCommand{
-		Type:      messaging.BankCmdLogout,
-		RequestID: uuid.NewString(),
-		Token:     token,
+	_, err := s.request(context.Background(), messaging.BankCommand{
+		Type:  messaging.BankCmdLogout,
+		Token: token,
 	})
+	return err
 }
 
 func (s *BankService) Profile(token string) (*bank.ProfileResponse, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, ErrBankSessionInvalid
 	}
-	if err := s.publish(context.Background(), messaging.BankCommand{
-		Type:      messaging.BankCmdGetProfile,
-		RequestID: uuid.NewString(),
-		Token:     token,
-	}); err != nil {
+	resp, err := s.request(context.Background(), messaging.BankCommand{
+		Type:  messaging.BankCmdGetProfile,
+		Token: token,
+	})
+	if err != nil {
 		return nil, err
 	}
-	return nil, ErrBankUnavailable
+	return resp.Profile, nil
 }
 
 func (s *BankService) Deposit(token string, amount float64) (*bank.ProfileResponse, error) {
@@ -135,12 +194,15 @@ func (s *BankService) Deposit(token string, amount float64) (*bank.ProfileRespon
 	if amount <= 0 {
 		return nil, ErrBankInvalidAmount
 	}
-	return nil, s.publish(context.Background(), messaging.BankCommand{
-		Type:      messaging.BankCmdDeposit,
-		RequestID: uuid.NewString(),
-		Token:     token,
-		Amount:    amount,
+	resp, err := s.request(context.Background(), messaging.BankCommand{
+		Type:   messaging.BankCmdDeposit,
+		Token:  token,
+		Amount: amount,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Profile, nil
 }
 
 func (s *BankService) Transfer(token, recipientPhone string, amount float64) (*bank.ProfileResponse, error) {
@@ -150,16 +212,20 @@ func (s *BankService) Transfer(token, recipientPhone string, amount float64) (*b
 	if amount <= 0 {
 		return nil, ErrBankInvalidAmount
 	}
-	if _, err := NormalizeBankPhone(recipientPhone); err != nil {
+	normalized, err := NormalizeBankPhone(recipientPhone)
+	if err != nil {
 		return nil, err
 	}
-	return nil, s.publish(context.Background(), messaging.BankCommand{
+	resp, err := s.request(context.Background(), messaging.BankCommand{
 		Type:           messaging.BankCmdTransfer,
-		RequestID:      uuid.NewString(),
 		Token:          token,
 		Amount:         amount,
-		RecipientPhone: recipientPhone,
+		RecipientPhone: normalized,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Profile, nil
 }
 
 func (s *BankService) ListTransactions(token string, limit int) ([]bank.TransactionResponse, error) {
@@ -169,13 +235,13 @@ func (s *BankService) ListTransactions(token string, limit int) ([]bank.Transact
 	if limit <= 0 {
 		limit = 20
 	}
-	if err := s.publish(context.Background(), messaging.BankCommand{
-		Type:      messaging.BankCmdTransactions,
-		RequestID: uuid.NewString(),
-		Token:     token,
-		Limit:     limit,
-	}); err != nil {
+	resp, err := s.request(context.Background(), messaging.BankCommand{
+		Type:  messaging.BankCmdTransactions,
+		Token: token,
+		Limit: limit,
+	})
+	if err != nil {
 		return nil, err
 	}
-	return nil, ErrBankUnavailable
+	return resp.Transactions, nil
 }

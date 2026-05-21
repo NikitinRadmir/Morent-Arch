@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// исходящий канал в банковский контур (Kafka). Morent не хранит клиентов/сессии/транзакции.
+// BankGateway — request-reply в payment-service через Kafka.
 type BankGateway interface {
 	Enabled() bool
-	Publish(ctx context.Context, cmd BankCommand) error
+	Request(ctx context.Context, cmd BankCommand) (BankResponse, error)
 }
 
 // команда в банк (топик и схема будут зафиксированы при подключении Kafka).
@@ -41,6 +41,6 @@ type BankNoopGateway struct{}
 
 func (BankNoopGateway) Enabled() bool { return false }
 
-func (BankNoopGateway) Publish(context.Context, BankCommand) error {
-	return nil
+func (BankNoopGateway) Request(context.Context, BankCommand) (BankResponse, error) {
+	return BankResponse{}, nil
 }

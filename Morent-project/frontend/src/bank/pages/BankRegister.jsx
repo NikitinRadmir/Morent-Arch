@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BankSimpleNav from '../components/BankSimpleNav';
 import PhoneInput from '../components/PhoneInput';
-import { BANK_UNAVAILABLE_MSG } from '../constants';
+import { useBank } from '../context/BankContext';
 
 const BankRegister = () => {
+  const navigate = useNavigate();
+  const { register } = useBank();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!phone.trim() || !password || !passwordConfirm) {
       toast.error('Заполните все поля');
@@ -20,7 +23,16 @@ const BankRegister = () => {
       toast.error('Пароли не совпадают');
       return;
     }
-    toast.error(BANK_UNAVAILABLE_MSG);
+    setSubmitting(true);
+    try {
+      await register(phone, password);
+      toast.success('Регистрация успешна');
+      navigate('/bank');
+    } catch (err) {
+      toast.error(err.message || 'Ошибка регистрации');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -70,8 +82,8 @@ const BankRegister = () => {
                 autoComplete="new-password"
               />
             </div>
-            <button type="submit" className="btn mb-btn-submit">
-              Зарегистрироваться
+            <button type="submit" className="btn mb-btn-submit" disabled={submitting}>
+              {submitting ? 'Регистрация…' : 'Зарегистрироваться'}
             </button>
           </form>
           <p className="text-center mt-3 mb-0 mb-link-muted">
