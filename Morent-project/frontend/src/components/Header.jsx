@@ -190,9 +190,11 @@ const Header = () => {
                         <button className="rentals-btn" type="button" onClick={handleRentalsClick}>
                             <i className="fa-solid fa-car-side"></i>
                         </button>
-                        <Link className="sign-in-btn" to="/bank" title="Morent Bank">
-                            Bank
-                        </Link>
+                        {isAuthenticated && (
+                            <Link className="sign-in-btn" to="/bank" title="Morent Bank">
+                                Bank
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

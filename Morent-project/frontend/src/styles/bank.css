@@ -563,3 +563,99 @@ body {
   box-shadow: var(--mb-shadow);
   font-size: 0.9rem;
 }
+
+/* Виртуальная карта */
+.mb-virtual-card {
+  max-width: 420px;
+  margin: 0 auto 1.5rem;
+}
+
+.mb-virtual-card-inner {
+  position: relative;
+  padding: 1.75rem 1.5rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0a2540 0%, #1a4d7a 45%, #00b894 120%);
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(10, 37, 64, 0.28);
+  overflow: hidden;
+}
+
+.mb-virtual-card-inner::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mb-virtual-card--loading .mb-virtual-card-inner,
+.mb-virtual-card-inner--empty {
+  background: var(--mb-border);
+  color: var(--mb-muted);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.mb-virtual-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.mb-virtual-card-chip {
+  width: 44px;
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f5d76e 0%, #c9a227 100%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.mb-virtual-card-brand {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.mb-virtual-card-number {
+  font-size: 1.35rem;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.mb-virtual-card-bottom {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.8fr;
+  gap: 0.75rem;
+}
+
+.mb-virtual-card-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+  margin-bottom: 0.2rem;
+}
+
+.mb-virtual-card-value {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.card-input {
+  letter-spacing: 0.08em;
+  font-family: 'Consolas', 'Courier New', monospace;
+}

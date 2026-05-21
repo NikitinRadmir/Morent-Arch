@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { bankApi } from '../api/bankApi';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:1488';
 const AUTH_USER_KEY = 'morent_auth_user';
@@ -137,6 +138,11 @@ export const AuthProvider = ({ children }) => {
             const data = await sendRequest('/auth/register', { name, email, password });
             setUser(data.user);
             setFavorites([]);
+            try {
+                await bankApi.syncSession();
+            } catch (bankErr) {
+                console.warn('Bank card provisioning failed', bankErr);
+            }
             return { success: true, message: 'Registration successful' };
         } catch (error) {
             return { success: false, message: error.message };
@@ -148,6 +154,11 @@ export const AuthProvider = ({ children }) => {
             const data = await sendRequest('/auth/login', { email, password });
             setUser(data.user);
             await loadFavorites();
+            try {
+                await bankApi.syncSession();
+            } catch (bankErr) {
+                console.warn('Bank session sync failed', bankErr);
+            }
             return { success: true, message: 'Welcome back!' };
         } catch (error) {
             return { success: false, message: error.message };

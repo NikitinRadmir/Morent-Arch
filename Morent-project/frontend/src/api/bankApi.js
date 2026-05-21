@@ -27,20 +27,8 @@ const bankFetch = async (path, options = {}) => {
 };
 
 export const bankApi = {
-  register: (payload) =>
-    bankFetch('/bank/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  login: (payload) =>
-    bankFetch('/bank/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  logout: () =>
-    bankFetch('/bank/auth/logout', {
+  syncSession: () =>
+    bankFetch('/bank/session', {
       method: 'POST',
     }),
 
@@ -52,11 +40,11 @@ export const bankApi = {
       body: JSON.stringify({ amount: Number(amount) }),
     }),
 
-  transfer: (recipientPhone, amount) =>
+  transfer: (recipientCardNumber, amount) =>
     bankFetch('/bank/transfer', {
       method: 'POST',
       body: JSON.stringify({
-        recipientPhone,
+        recipientCardNumber: String(recipientCardNumber).replace(/\D/g, ''),
         amount: Number(amount),
       }),
     }),

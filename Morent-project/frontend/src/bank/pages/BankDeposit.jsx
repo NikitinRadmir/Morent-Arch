@@ -13,8 +13,7 @@ const BankDeposit = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      toast.error('Войдите в банк');
-      navigate('/bank/login');
+      toast.error('Банковский счёт недоступен');
       return;
     }
     if (!amount || Number(amount) <= 0) {

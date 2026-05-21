@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"errors"
 
 	"morent-backend/internal/grpc/bookingpb/booking/v1"
 	"morent-backend/internal/service"
@@ -34,15 +35,19 @@ func (s *BookingServiceServer) CreateBooking(ctx context.Context, in *bookingpb.
 	start := in.StartDate.AsTime()
 	end := in.EndDate.AsTime()
 
-	r, err := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end)
+	r, err := s.rentals.CreateRental(uint(in.UserId), uint(in.CarId), start, end, 0, "")
 	if err != nil {
-		switch err {
-		case service.ErrCarNotFound:
+		switch {
+		case errors.Is(err, service.ErrCarNotFound):
 			return nil, status.Error(codes.NotFound, err.Error())
-		case service.ErrInvalidRentalPeriod:
+		case errors.Is(err, service.ErrInvalidRentalPeriod), errors.Is(err, service.ErrRentalPriceMismatch):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case service.ErrCarAlreadyBooked:
+		case errors.Is(err, service.ErrCarAlreadyBooked):
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		case errors.Is(err, service.ErrInsufficientBankBalance), errors.Is(err, service.ErrBankInsufficientFunds):
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		case errors.Is(err, service.ErrBankSessionRequired), errors.Is(err, service.ErrBankSessionInvalid):
+			return nil, status.Error(codes.Unauthenticated, err.Error())
 		default:
 			return nil, status.Error(codes.Internal, err.Error())
 		}

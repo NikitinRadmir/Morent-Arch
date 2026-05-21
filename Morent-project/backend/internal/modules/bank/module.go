@@ -15,9 +15,16 @@ type Outputs struct {
 	Handler *handlers.BankHandler
 }
 
-func NewModule(cfg *config.Config, gateway messaging.BankGateway) Outputs {
-	bankService := service.NewBankService(gateway)
-	handler := handlers.NewBankHandler(bankService, cfg)
+type ModuleParams struct {
+	fx.In
+	Cfg     *config.Config
+	Gateway messaging.BankGateway
+	Auth    *service.AuthService
+}
+
+func NewModule(p ModuleParams) Outputs {
+	bankService := service.NewBankService(p.Gateway, p.Cfg.BankLinkSecret)
+	handler := handlers.NewBankHandler(bankService, p.Auth, p.Cfg)
 	return Outputs{
 		Service: bankService,
 		Handler: handler,

@@ -152,8 +152,10 @@ func (g *BankGateway) Request(ctx context.Context, cmd messaging.BankCommand) (m
 		Password:       cmd.Password,
 		DisplayName:    cmd.DisplayName,
 		Token:          cmd.Token,
-		Amount:         cmd.Amount,
-		RecipientPhone: cmd.RecipientPhone,
+		Amount:          cmd.Amount,
+		IdempotencyKey:  cmd.IdempotencyKey,
+		RecipientPhone:      cmd.RecipientPhone,
+		RecipientCardNumber: cmd.RecipientCardNumber,
 		Limit:          cmd.Limit,
 		SentAt:         cmd.SentAt,
 	}

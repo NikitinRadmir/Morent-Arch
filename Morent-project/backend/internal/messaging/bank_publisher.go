@@ -19,8 +19,10 @@ type BankCommand struct {
 	Password  string
 	DisplayName string
 	Token     string
-	Amount    float64
-	RecipientPhone string
+	Amount              float64
+	IdempotencyKey      string
+	RecipientPhone      string
+	RecipientCardNumber string
 	Limit     int
 	SentAt    time.Time
 }
@@ -33,6 +35,7 @@ const (
 	BankCmdLogout       BankCommandType = "bank.logout"
 	BankCmdGetProfile   BankCommandType = "bank.profile"
 	BankCmdDeposit      BankCommandType = "bank.deposit"
+	BankCmdPay          BankCommandType = "bank.pay"
 	BankCmdTransfer     BankCommandType = "bank.transfer"
 	BankCmdTransactions BankCommandType = "bank.transactions"
 )

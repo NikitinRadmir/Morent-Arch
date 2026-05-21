@@ -16,11 +16,12 @@ import (
 
 type BankHandler struct {
 	bank *service.BankService
+	auth *service.AuthService
 	cfg  *config.Config
 }
 
-func NewBankHandler(bank *service.BankService, cfg *config.Config) *BankHandler {
-	return &BankHandler{bank: bank, cfg: cfg}
+func NewBankHandler(bank *service.BankService, auth *service.AuthService, cfg *config.Config) *BankHandler {
+	return &BankHandler{bank: bank, auth: auth, cfg: cfg}
 }
 
 var bankValidator = validator.New()
@@ -61,6 +62,25 @@ func (h *BankHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	h.setBankCookie(w, token)
 	h.writeJSON(w, http.StatusOK, bankdto.AuthResponse{Token: token, Profile: *profile})
+}
+
+func (h *BankHandler) SyncSession(w http.ResponseWriter, r *http.Request) {
+	user, err := common.Authenticate(h.auth, h.cfg, r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	displayName := strings.TrimSpace(user.Nickname)
+	if displayName == "" {
+		displayName = strings.TrimSpace(user.Name)
+	}
+	profile, token, err := h.bank.EnsureSessionForUser(user.ID, displayName)
+	if err != nil {
+		h.writeBankError(w, err)
+		return
+	}
+	h.setBankCookie(w, token)
+	h.writeJSON(w, http.StatusOK, profile)
 }
 
 func (h *BankHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +125,7 @@ func (h *BankHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	profile, err := h.bank.Transfer(token, req.RecipientPhone, req.Amount)
+	profile, err := h.bank.Transfer(token, req.RecipientCardNumber, req.Amount)
 	if err != nil {
 		h.writeBankError(w, err)
 		return
@@ -177,7 +197,8 @@ func (h *BankHandler) writeBankError(w http.ResponseWriter, err error) {
 	case errors.Is(err, service.ErrBankInvalidCredentials), errors.Is(err, service.ErrBankSessionInvalid):
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
-	case errors.Is(err, service.ErrBankInvalidPhone), errors.Is(err, service.ErrBankInvalidAmount),
+	case errors.Is(err, service.ErrBankInvalidPhone), errors.Is(err, service.ErrBankInvalidCard),
+		errors.Is(err, service.ErrBankInvalidAmount),
 		errors.Is(err, service.ErrBankInsufficientFunds), errors.Is(err, service.ErrBankRecipientNotFound),
 		errors.Is(err, service.ErrBankSameAccount):
 		http.Error(w, err.Error(), http.StatusBadRequest)

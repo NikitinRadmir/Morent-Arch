@@ -6,7 +6,7 @@ type RentalRequest struct {
 	CarID      uint    `json:"carId" validate:"required"`
 	StartDate  string  `json:"startDate" validate:"required"`
 	EndDate    string  `json:"endDate" validate:"required"`
-	TotalPrice float64 `json:"totalPrice" validate:"gte=0"`
+	TotalPrice float64 `json:"totalPrice" validate:"required,gt=0"`
 }
 
 type BookingDTO struct {

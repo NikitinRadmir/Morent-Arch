@@ -2,10 +2,13 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
+import { bankApi } from '../api/bankApi';
 
 const PayForm = ({ car, setTotalAmount }) => {
-    const { isAuthenticated, authRequest } = useContext(AuthContext);
+    const { isAuthenticated, authRequest, user } = useContext(AuthContext);
     const navigate = useNavigate();
+    const [bankProfile, setBankProfile] = useState(null);
+    const [bankLoading, setBankLoading] = useState(false);
     const [localTotalAmount, setLocalTotalAmount] = useState(car.price);
     const [submitting, setSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState('');
@@ -217,100 +220,58 @@ const PayForm = ({ car, setTotalAmount }) => {
         setBookedDateStrings(result);
     }, [bookings]);
 
-
-    const handleNameChange = (e) => {
-        const value = e.target.value;
-        const filteredValue = value.replace(/[^a-zA-Zа-яА-Я\s]/g, '');
-        e.target.value = filteredValue;
-    };
-
-    const handleCardChange = (e) => {
-        const value = e.target.value;
-        const filteredValue = value.replace(/[^1-9\s]/g, '');
-        e.target.value = filteredValue;
-    };
-    const handleCVCChange = (e) => {
-        let value = e.target.value;
-        let filteredValue = value.replace(/[^1-9\s]/g, '');
-        if (filteredValue.length > 3) {
-            filteredValue = filteredValue.slice(0, 3);
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setBankProfile(null);
+            return;
         }
-        e.target.value = filteredValue;
-    };
-
-    const validateEmail = (e) => {
-        const email = e.target.value;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            e.target.setCustomValidity('Please enter a valid email address.');
-        } else {
-            e.target.setCustomValidity('');
-        }
-    };
-
-
-    // локальное состояние валидации срока карты пока не используется UI
-    // eslint-disable-next-line no-unused-vars
-    const [expirationDateError, setExpirationDateError] = useState('');
-
-    const validateExpirationDate = (value) => {
-        let day = value.slice(0, 2);
-        let month = value.slice(3, 5);
-        let year = value.slice(6, 8);
-        removeNotification('Invalid day. Day must be between 01 and 31.');
-        removeNotification('Invalid month. Month must be between 01 and 12.');
-        removeNotification('Invalid year. Year must be between 00 and 99.');
-        if (day && (parseInt(day, 10) < 1 || parseInt(day, 10) > 31)) {
-            addNotification('Invalid day. Day must be between 01 and 31.');
-            return false;
-        }
-
-        if (month && (parseInt(month, 10) < 1 || parseInt(month, 10) > 12)) {
-            addNotification('Invalid month. Month must be between 01 and 12.');
-            return false;
-        }
-
-        if (year && (parseInt(year, 10) < 0 || parseInt(year, 10) > 99)) {
-            addNotification('Invalid year. Year must be between 00 and 99.');
-            return false;
-        }
-
-        return true;
-    };
-
-    const handleExpirationDateChange = (e) => {
-        let value = e.target.value;
-
-        value = value.replace(/[^0-9]/g, '');
-
-        if (value.length > 6) {
-            value = value.slice(0, 6);
-        }
-
-        const day = value.slice(0, 2);
-        const month = value.slice(2, 4);
-        const year = value.slice(4, 6);
-
-        let formattedValue = '';
-        if (day) {
-            formattedValue += day;
-            if (value.length >= 3) {
-                formattedValue += '/';
+        const loadBank = async () => {
+            try {
+                setBankLoading(true);
+                await bankApi.syncSession();
+                const profile = await bankApi.profile();
+                setBankProfile(profile);
+            } catch (error) {
+                console.error('Failed to load bank profile for payment', error);
+                setBankProfile(null);
+            } finally {
+                setBankLoading(false);
             }
-        }
-        if (month) {
-            formattedValue += month;
-            if (value.length >= 5) {
-                formattedValue += '/';
-            }
-        }
-        if (year) {
-            formattedValue += year;
-        }
+        };
+        loadBank();
+    }, [isAuthenticated, user?.id]);
 
-        validateExpirationDate(formattedValue);
+    const billingName = user?.nickname || user?.name || '—';
+    const billingEmail = user?.email || '—';
 
-        e.target.value = formattedValue;
+    const formatMoney = (value) => {
+        if (value == null || Number.isNaN(Number(value))) {
+            return '—';
+        }
+        return new Intl.NumberFormat('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(Number(value));
+    };
+
+    const mapRentalError = (message) => {
+        const text = (message || '').toLowerCase();
+        if (text.includes('insufficient') || text.includes('недостаточно средств')) {
+            return 'Недостаточно средств на банковском счёте. Пополните карту в Morent Bank.';
+        }
+        if (text.includes('bank session') || text.includes('сессия банка') || text.includes('morent bank')) {
+            return 'Откройте Morent Bank и обновите страницу оплаты.';
+        }
+        if (text.includes('уже забронирован') || text.includes('already booked')) {
+            return 'Автомобиль уже забронирован на выбранные даты.';
+        }
+        if (text.includes('price') || text.includes('сумма аренды')) {
+            return 'Сумма аренды устарела. Перевыберите даты.';
+        }
+        if (text.includes('bank') && text.includes('недоступен')) {
+            return 'Банковский сервис временно недоступен. Попробуйте позже.';
+        }
+        return message || 'Не удалось оформить аренду';
     };
 
     const handleSubmit = async (e) => {
@@ -321,6 +282,12 @@ const PayForm = ({ car, setTotalAmount }) => {
         if (!isAuthenticated) {
             addNotification('Please sign in to create a rental.');
             toast.error('Пожалуйста, войдите в аккаунт, чтобы оформить аренду');
+            return;
+        }
+
+        if (!bankProfile?.cardNumber) {
+            addNotification('Bank card is not available. Open Morent Bank first.');
+            toast.error('Банковская карта недоступна. Откройте Morent Bank.');
             return;
         }
 
@@ -346,20 +313,41 @@ const PayForm = ({ car, setTotalAmount }) => {
             return;
         }
 
+        const price = Number(localTotalAmount);
+        if (bankProfile.balance != null && price > Number(bankProfile.balance)) {
+            const msg = 'Недостаточно средств на банковском счёте';
+            addNotification(msg);
+            toast.error(msg);
+            return;
+        }
+
         try {
             setSubmitting(true);
+            await bankApi.syncSession();
+            const freshProfile = await bankApi.profile();
+            setBankProfile(freshProfile);
+            if (freshProfile?.balance != null && price > Number(freshProfile.balance)) {
+                throw new Error('недостаточно средств на банковском счёте');
+            }
+
             const rentalPayload = {
                 carId: car.id,
                 startDate: normalizeDateToISO(selectedStartDate),
                 endDate: normalizeDateToISO(selectedEndDate),
-                totalPrice: localTotalAmount,
+                totalPrice: price,
             };
             const rentalResponse = await authRequest('/rentals', {
                 method: 'POST',
                 body: JSON.stringify(rentalPayload),
             });
 
-            // Redirect to success page
+            try {
+                const afterPay = await bankApi.profile();
+                setBankProfile(afterPay);
+            } catch {
+                // ignore profile refresh errors
+            }
+
             toast.success('Бронирование успешно оформлено');
             navigate('/rental-success', {
                 state: {
@@ -368,10 +356,10 @@ const PayForm = ({ car, setTotalAmount }) => {
                 },
             });
         } catch (error) {
-            const msg = error.message || 'Failed to submit rental';
+            const msg = mapRentalError(error.message);
             setSubmitError(msg);
             addNotification(msg);
-            toast.error(`Ошибка бронирования: ${msg}`);
+            toast.error(msg);
         } finally {
             setSubmitting(false);
         }
@@ -397,52 +385,6 @@ const PayForm = ({ car, setTotalAmount }) => {
 
             <form onSubmit={handleSubmit} encType="multipart/form-data">
                 <div className='row p-4'>
-                    <div className='col-12 p-4 form-container'>
-                        <div className='row p-0'>
-                            <div className='col-12'>
-                                <h5>Billing Info</h5>
-                            </div>
-                            <div className='col-8 pr-4'>
-                                <p><highlited-gray>Please enter your billing info</highlited-gray></p>
-                            </div>
-                            <div className='col-4 pb-4 pl-4 t-e'>
-                                <p><highlited-gray>Step 1 of 4</highlited-gray></p>
-                            </div>
-                            <div className='col-6 pr-4'>
-                                <h6>Name</h6>
-                                <input
-                                    className="form-container-input"
-                                    type="text"
-                                    id="Name"
-                                    name="Name"
-                                    required placeholder="Your Name"
-                                    onInput={handleNameChange}
-                                />
-                            </div>
-                            <div className='col-6 pb-4 pl-4'>
-                                <h6>Email</h6>
-                                <input
-                                    className="form-container-input"
-                                    type="text"
-                                    id="Email"
-                                    name="Email"
-                                    required placeholder="Email"
-                                    onInput={validateEmail}
-                                />
-                            </div>
-                            <div className='col-6 pr-4'>
-                                <h6>Address</h6>
-                                <input className="form-container-input" type="text" id="Address" name="Address" required placeholder="Address"></input>
-                            </div>
-                            <div className='col-6 pl-4'>
-                                <h6>Town/City</h6>
-                                <input className="form-container-input" type="text" id="City" name="City" required placeholder="Town or City"></input>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className='row p-4'>
                     <div className='col-12 py-4 form-container'>
                         <div className='row p-0'>
                             <div className='col-12'>
@@ -452,7 +394,7 @@ const PayForm = ({ car, setTotalAmount }) => {
                                 <p><highlited-gray>Select available dates from the calendar</highlited-gray></p>
                             </div>
                             <div className='col-4 pl-4 t-e'>
-                                <p><highlited-gray>Step 2 of 4</highlited-gray></p>
+                                <p><highlited-gray>Step 1 of 3</highlited-gray></p>
                             </div>
                             <div className='col-12'>
                                 <div className='calendar-card'>
@@ -510,85 +452,76 @@ const PayForm = ({ car, setTotalAmount }) => {
                     <div className='col-12 py-4 form-container'>
                         <div className='row p-0'>
                             <div className='col-12'>
-                                <h5>Payment Method</h5>
+                                <h5>Billing &amp; Payment</h5>
                             </div>
                             <div className='col-8 pr-4'>
-                                <p><highlited-gray>Please enter your payment method</highlited-gray></p>
+                                <p><highlited-gray>Данные подставляются из вашего профиля и Morent Bank</highlited-gray></p>
                             </div>
                             <div className='col-4 pl-4 t-e'>
-                                <p><highlited-gray>Step 3 of 4</highlited-gray></p>
+                                <p><highlited-gray>Step 2 of 3</highlited-gray></p>
                             </div>
-                            <div className="col-12 pt-4">
-                                <div className="row credit-card p-4">
-                                    <div className="col-12 p-0 mb-4">
-                                        <div className="row credit-card-h">
-                                            <img src="/images/pick-up-icon.png" className="mr-3"></img>
-                                            <h6 className="m-0 mt-1">Credit Card</h6>
-                                            <img className="ml-auto" src="/images/Visa.png"></img>
-                                        </div>
+                            <div className="col-12 pt-3">
+                                <div className="row pay-billing-summary mb-3">
+                                    <div className="col-md-6 mb-2">
+                                        <h6 className="mb-1">Name</h6>
+                                        <p className="pay-readonly-field mb-0">{billingName}</p>
                                     </div>
-
-
-                                    <div className='col-6 pr-4'>
-                                        <h6>Card Number</h6>
-                                        <input
-                                            className="credit-card-input"
-                                            type="tel"
-                                            id="CardNumber"
-                                            name="CardNumber"
-                                            placeholder="Card Number"
-                                            onInput={handleCardChange}
-                                        ></input>
-                                    </div>
-                                    <div className='col-6 pb-4 pl-4'>
-                                        <h6>Expration Date</h6>
-                                        <input
-                                            className="credit-card-input"
-                                            type="text"
-                                            id="CardDate"
-                                            name="CardDate"
-                                            placeholder="DD/MM/YY"
-                                            onInput={handleExpirationDateChange}
-                                        ></input>
-                                    </div>
-                                    <div className='col-6 pr-4'>
-                                        <h6>Card Holder</h6>
-                                        <input
-                                            className="credit-card-input"
-                                            type="text"
-                                            id="CardHolder"
-                                            name="CardHolder"
-                                            placeholder="Card holder"
-                                            onInput={handleNameChange}
-                                        ></input>
-                                    </div>
-                                    <div className='col-6 pl-4'>
-                                        <h6>CVC</h6>
-                                        <input
-                                            className="credit-card-input"
-                                            type="text"
-                                            id="CardCvc"
-                                            name="CardCvc"
-                                            placeholder="CVC"
-                                            onInput={handleCVCChange}
-                                        ></input>
+                                    <div className="col-md-6 mb-2">
+                                        <h6 className="mb-1">Email</h6>
+                                        <p className="pay-readonly-field mb-0">{billingEmail}</p>
                                     </div>
                                 </div>
-
-                                {/* <div className="col-12 my-4 p-0">
-                                    <div className="row credit-card-h2">
-                                        <input type="radio" id="PayPal" name="PayPal" value="PayPal"></input>
-                                        <label for="PayPal">PayPal</label>
-                                        <img className="ml-auto" src="/images/PayPal.png"></img>
-                                    </div>
                             </div>
-                            <div className="col-12 my-4 p-0">
-                                    <div className="row credit-card-h2">
-                                        <input type="radio" id="Bitcoin" name="Bitcoin" value="Bitcoin"></input>
-                                        <label for="Bitcoin">Bitcoin</label>
-                                        <img className="ml-auto" src="/images/Bitcoin.png"></img>
+                            <div className="col-12 pt-2">
+                                <div className="row credit-card p-4 pay-card-readonly">
+                                    <div className="col-12 p-0 mb-4">
+                                        <div className="row credit-card-h">
+                                            <img src="/images/pick-up-icon.png" className="mr-3" alt="" />
+                                            <h6 className="m-0 mt-1">Morent Bank Card</h6>
+                                            <img className="ml-auto" src="/images/Visa.png" alt="Visa" />
+                                        </div>
                                     </div>
-                            </div> */}
+                                    {bankLoading ? (
+                                        <div className="col-12">
+                                            <p className="mb-0 text-muted">Загрузка карты…</p>
+                                        </div>
+                                    ) : bankProfile?.cardNumber ? (
+                                        <>
+                                            <div className="col-12 mb-3">
+                                                <h6>Баланс счёта</h6>
+                                                <p className={`pay-readonly-field mb-0 ${Number(bankProfile.balance) < Number(localTotalAmount) ? 'pay-balance--low' : ''}`}>
+                                                    {formatMoney(bankProfile.balance)} ₽
+                                                    {Number(localTotalAmount) > 0 && (
+                                                        <span className="pay-balance-hint">
+                                                            {' '}
+                                                            (к оплате: {formatMoney(localTotalAmount)} ₽)
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="col-12 mb-3">
+                                                <h6>Card Number</h6>
+                                                <p className="pay-readonly-field pay-card-number mb-0">{bankProfile.cardNumber}</p>
+                                            </div>
+                                            <div className="col-md-4 mb-2">
+                                                <h6>Expiration</h6>
+                                                <p className="pay-readonly-field mb-0">{bankProfile.expDate}</p>
+                                            </div>
+                                            <div className="col-md-4 mb-2">
+                                                <h6>Card Holder</h6>
+                                                <p className="pay-readonly-field mb-0">{bankProfile.cardHolder}</p>
+                                            </div>
+                                            <div className="col-md-4 mb-2">
+                                                <h6>CVV</h6>
+                                                <p className="pay-readonly-field mb-0">{bankProfile.cvv}</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="col-12">
+                                            <p className="mb-0 text-danger">Карта не найдена. Откройте <a href="/bank">Morent Bank</a>, чтобы выпустить виртуальную карту.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -605,7 +538,7 @@ const PayForm = ({ car, setTotalAmount }) => {
                                 <p><highlited-gray>We are getting to the end. Just few clicks and your rental is ready!</highlited-gray></p>
                             </div>
                             <div className='col-4 pl-4 t-e'>
-                                <p><highlited-gray>Step 4 of 4</highlited-gray></p>
+                                <p><highlited-gray>Step 3 of 3</highlited-gray></p>
                             </div>
                             <div className="col-12">
                                 <div className="col-12 my-4 p-0">

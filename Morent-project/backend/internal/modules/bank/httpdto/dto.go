@@ -23,8 +23,8 @@ type AmountRequest struct {
 }
 
 type TransferRequest struct {
-	RecipientPhone string  `json:"recipientPhone" validate:"required"`
-	Amount         float64 `json:"amount" validate:"required"`
+	RecipientCardNumber string  `json:"recipientCardNumber" validate:"required"`
+	Amount              float64 `json:"amount" validate:"required"`
 }
 
 type OperationResponse struct {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import BankHeader from '../components/BankHeader';
+import BankVirtualCard from '../components/BankVirtualCard';
 import { useBank } from '../context/BankContext';
 
 const offers = [
@@ -46,6 +47,13 @@ const BankHome = () => {
           </p>
         </section>
 
+        {isAuthenticated && (
+          <section className="mb-4">
+            <h2 className="mb-section-title">Ваша карта</h2>
+            <BankVirtualCard profile={profile} loading={loading} />
+          </section>
+        )}
+
         <section className="mb-4">
           <h2 className="mb-section-title">Акции и предложения</h2>
           <div className="mb-row g-3">
@@ -61,19 +69,13 @@ const BankHome = () => {
           </div>
         </section>
 
-        <p className="text-center mb-link-muted mb-0">
-          {isAuthenticated ? (
-            <>
-              Вы вошли как {profile?.phone}
-              <br />
-            </>
-          ) : null}
-          <Link to="/bank/login">Вход</Link>
-          &nbsp;·&nbsp;
-          <Link to="/bank/register">Регистрация</Link>
-          &nbsp;·&nbsp;
-          <Link to="/">На сайт MORENT</Link>
-        </p>
+        {isAuthenticated && (
+          <p className="text-center mb-link-muted mb-0">
+            {profile?.displayName || profile?.phone}
+            <br />
+            <Link to="/">На сайт MORENT</Link>
+          </p>
+        )}
       </main>
     </>
   );

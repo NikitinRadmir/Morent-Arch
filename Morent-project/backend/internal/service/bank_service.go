@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 var (
 	ErrBankUnavailable        = errors.New("bank is not available until Kafka integration is enabled")
 	ErrBankInvalidPhone       = errors.New("invalid phone number")
+	ErrBankInvalidCard        = errors.New("invalid card number")
 	ErrBankInvalidAmount      = errors.New("invalid amount")
 	ErrBankSessionInvalid     = errors.New("invalid or expired session")
 	ErrBankPhoneExists        = errors.New("client with this phone already exists")
@@ -24,14 +28,35 @@ var (
 )
 
 type BankService struct {
-	gateway messaging.BankGateway
+	gateway    messaging.BankGateway
+	linkSecret string
 }
 
-func NewBankService(gateway messaging.BankGateway) *BankService {
+func NewBankService(gateway messaging.BankGateway, linkSecret string) *BankService {
 	if gateway == nil {
 		gateway = messaging.BankNoopGateway{}
 	}
-	return &BankService{gateway: gateway}
+	if strings.TrimSpace(linkSecret) == "" {
+		linkSecret = "morent-bank-link-dev"
+	}
+	return &BankService{gateway: gateway, linkSecret: linkSecret}
+}
+
+// UserBankPhone — стабильный виртуальный телефон счёта для пользователя Morent (11 цифр, с ведущей 8).
+func UserBankPhone(userID uint) (string, error) {
+	if userID == 0 {
+		return "", ErrBankInvalidPhone
+	}
+	phone := fmt.Sprintf("8%010d", userID)
+	if len(phone) != 11 {
+		return "", ErrBankInvalidPhone
+	}
+	return phone, nil
+}
+
+func internalBankPassword(userID uint, secret string) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("morent-bank:%d:%s", userID, secret)))
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *BankService) Available() bool {
@@ -89,6 +114,8 @@ func mapBankGatewayError(err error) error {
 		return ErrBankSessionInvalid
 	case messaging.ErrBankInvalidPhone:
 		return ErrBankInvalidPhone
+	case messaging.ErrBankInvalidCard:
+		return ErrBankInvalidCard
 	case messaging.ErrBankInvalidAmount:
 		return ErrBankInvalidAmount
 	case messaging.ErrBankInsufficientFunds:
@@ -123,6 +150,19 @@ func NormalizeBankPhone(raw string) (string, error) {
 	return d, nil
 }
 
+func NormalizeBankCardNumber(raw string) (string, error) {
+	d := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, raw)
+	if len(d) != 16 {
+		return "", ErrBankInvalidCard
+	}
+	return d, nil
+}
+
 func (s *BankService) Register(phone, password, displayName string) (*bank.ProfileResponse, string, error) {
 	normalized, err := NormalizeBankPhone(phone)
 	if err != nil {
@@ -141,6 +181,27 @@ func (s *BankService) Register(phone, password, displayName string) (*bank.Profi
 		return nil, "", err
 	}
 	return resp.Profile, resp.Token, nil
+}
+
+// EnsureSessionForUser создаёт или открывает банковский счёт, привязанный к пользователю Morent.
+func (s *BankService) EnsureSessionForUser(userID uint, displayName string) (*bank.ProfileResponse, string, error) {
+	phone, err := UserBankPhone(userID)
+	if err != nil {
+		return nil, "", err
+	}
+	password := internalBankPassword(userID, s.linkSecret)
+	profile, token, err := s.Login(phone, password)
+	if err == nil {
+		return profile, token, nil
+	}
+	if !errors.Is(err, ErrBankInvalidCredentials) {
+		return nil, "", err
+	}
+	name := strings.TrimSpace(displayName)
+	if name == "" {
+		name = "Клиент"
+	}
+	return s.Register(phone, password, name)
 }
 
 func (s *BankService) Login(phone, password string) (*bank.ProfileResponse, string, error) {
@@ -187,6 +248,25 @@ func (s *BankService) Profile(token string) (*bank.ProfileResponse, error) {
 	return resp.Profile, nil
 }
 
+func (s *BankService) Pay(token string, amount float64, idempotencyKey string) (*bank.ProfileResponse, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, ErrBankSessionInvalid
+	}
+	if amount <= 0 {
+		return nil, ErrBankInvalidAmount
+	}
+	resp, err := s.request(context.Background(), messaging.BankCommand{
+		Type:           messaging.BankCmdPay,
+		Token:          token,
+		Amount:         amount,
+		IdempotencyKey: strings.TrimSpace(idempotencyKey),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Profile, nil
+}
+
 func (s *BankService) Deposit(token string, amount float64) (*bank.ProfileResponse, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, ErrBankSessionInvalid
@@ -205,22 +285,22 @@ func (s *BankService) Deposit(token string, amount float64) (*bank.ProfileRespon
 	return resp.Profile, nil
 }
 
-func (s *BankService) Transfer(token, recipientPhone string, amount float64) (*bank.ProfileResponse, error) {
+func (s *BankService) Transfer(token, recipientCardNumber string, amount float64) (*bank.ProfileResponse, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, ErrBankSessionInvalid
 	}
 	if amount <= 0 {
 		return nil, ErrBankInvalidAmount
 	}
-	normalized, err := NormalizeBankPhone(recipientPhone)
+	normalized, err := NormalizeBankCardNumber(recipientCardNumber)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := s.request(context.Background(), messaging.BankCommand{
-		Type:           messaging.BankCmdTransfer,
-		Token:          token,
-		Amount:         amount,
-		RecipientPhone: normalized,
+		Type:                messaging.BankCmdTransfer,
+		Token:               token,
+		Amount:              amount,
+		RecipientCardNumber: normalized,
 	})
 	if err != nil {
 		return nil, err

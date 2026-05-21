@@ -22,9 +22,11 @@ type BankCommand struct {
 	Password       string    `json:"password,omitempty"`
 	DisplayName    string    `json:"display_name,omitempty"`
 	Token          string    `json:"token,omitempty"`
-	Amount         float64   `json:"amount,omitempty"`
-	RecipientPhone string    `json:"recipient_phone,omitempty"`
-	Limit          int       `json:"limit,omitempty"`
+	Amount          float64 `json:"amount,omitempty"`
+	IdempotencyKey  string  `json:"idempotency_key,omitempty"`
+	RecipientPhone     string `json:"recipient_phone,omitempty"`
+	RecipientCardNumber string `json:"recipient_card_number,omitempty"`
+	Limit              int    `json:"limit,omitempty"`
 	SentAt         time.Time `json:"sent_at,omitempty"`
 }
 
@@ -34,6 +36,10 @@ type BankProfile struct {
 	DisplayName string  `json:"displayName"`
 	Role        string  `json:"role"`
 	Balance     float64 `json:"balance"`
+	CardNumber  string  `json:"cardNumber,omitempty"`
+	ExpDate     string  `json:"expDate,omitempty"`
+	CVV         string  `json:"cvv,omitempty"`
+	CardHolder  string  `json:"cardHolder,omitempty"`
 }
 
 // BankTransaction — операция в истории.
@@ -41,7 +47,8 @@ type BankTransaction struct {
 	ID                uint    `json:"id"`
 	Type              string  `json:"type"`
 	Amount            float64 `json:"amount"`
-	CounterpartyPhone string  `json:"counterpartyPhone,omitempty"`
+	CounterpartyPhone     string `json:"counterpartyPhone,omitempty"`
+	CounterpartyCardNumber string `json:"counterpartyCardNumber,omitempty"`
 	BalanceAfter      float64 `json:"balanceAfter"`
 	CreatedAt         string  `json:"createdAt"`
 }

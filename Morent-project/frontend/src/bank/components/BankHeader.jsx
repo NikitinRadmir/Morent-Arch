@@ -13,7 +13,7 @@ const formatMoney = (value) => {
 };
 
 const BankHeader = () => {
-  const { profile, isAuthenticated, logout, loading } = useBank();
+  const { profile, isAuthenticated, loading } = useBank();
 
   return (
     <header className="mb-header">
@@ -49,15 +49,6 @@ const BankHeader = () => {
                 </div>
                 <div className="mb-profile-role">{profile?.role || 'Клиент'}</div>
               </div>
-              {isAuthenticated ? (
-                <button
-                  type="button"
-                  className="btn btn-link btn-sm text-white p-0 ms-2"
-                  onClick={() => logout()}
-                >
-                  Выйти
-                </button>
-              ) : null}
               <img
                 className="mb-profile-avatar"
                 src="/images/bank/profile.png"

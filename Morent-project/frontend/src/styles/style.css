@@ -1505,6 +1505,38 @@ i.fa-regular.fa-heart {
   color: rgb(84, 96, 113);
 }
 
+.pay-readonly-field {
+  min-height: 50px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background-color: #fff;
+  color: rgb(84, 96, 113);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.pay-card-number {
+  font-family: Consolas, 'Courier New', monospace;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+
+.pay-card-readonly h6 {
+  color: rgb(84, 96, 113);
+  font-size: 0.85rem;
+}
+
+.pay-balance--low {
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.pay-balance-hint {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: rgb(120, 130, 145);
+}
+
 .credit-card-h {
   padding-left: 1rem !important;
   padding-right: 1rem !important;

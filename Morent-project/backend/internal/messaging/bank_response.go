@@ -35,6 +35,10 @@ func MapBankResponse(raw *morentevents.BankResponse) BankResponse {
 			DisplayName: raw.Profile.DisplayName,
 			Role:        raw.Profile.Role,
 			Balance:     raw.Profile.Balance,
+			CardNumber:  raw.Profile.CardNumber,
+			ExpDate:     raw.Profile.ExpDate,
+			CVV:         raw.Profile.CVV,
+			CardHolder:  raw.Profile.CardHolder,
 		}
 	}
 	if len(raw.Transactions) > 0 {
@@ -44,7 +48,8 @@ func MapBankResponse(raw *morentevents.BankResponse) BankResponse {
 				ID:                t.ID,
 				Type:              t.Type,
 				Amount:            t.Amount,
-				CounterpartyPhone: t.CounterpartyPhone,
+				CounterpartyPhone:      t.CounterpartyPhone,
+				CounterpartyCardNumber: t.CounterpartyCardNumber,
 				BalanceAfter:      t.BalanceAfter,
 				CreatedAt:         t.CreatedAt,
 			}
@@ -70,6 +75,8 @@ func (r BankResponse) AsError() error {
 		return ErrBankSessionInvalid{msg}
 	case "invalid_phone":
 		return ErrBankInvalidPhone{msg}
+	case "invalid_card":
+		return ErrBankInvalidCard{msg}
 	case "invalid_amount":
 		return ErrBankInvalidAmount{msg}
 	case "insufficient_funds":
@@ -98,6 +105,10 @@ func (e ErrBankSessionInvalid) Error() string { return e.Msg }
 type ErrBankInvalidPhone struct{ Msg string }
 
 func (e ErrBankInvalidPhone) Error() string { return e.Msg }
+
+type ErrBankInvalidCard struct{ Msg string }
+
+func (e ErrBankInvalidCard) Error() string { return e.Msg }
 
 type ErrBankInvalidAmount struct{ Msg string }
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Category from './pages/Category';
 import Layout from './layouts/Layout';
@@ -14,23 +15,25 @@ import Admin from './pages/Admin';
 import RentalSuccess from './pages/RentalSuccess';
 import NotFound from './pages/NotFound';
 import BankLayout from './bank/BankLayout';
+import BankAuthGate from './bank/components/BankAuthGate';
 import BankHome from './bank/pages/BankHome';
-import BankLogin from './bank/pages/BankLogin';
-import BankRegister from './bank/pages/BankRegister';
 import BankTransfer from './bank/pages/BankTransfer';
 import BankDeposit from './bank/pages/BankDeposit';
 
 
 const App = () => {
   return (
+    <AuthProvider>
     <Router>
       <Routes>
         <Route path="/bank" element={<BankLayout />}>
-          <Route index element={<BankHome />} />
-          <Route path="login" element={<BankLogin />} />
-          <Route path="register" element={<BankRegister />} />
-          <Route path="transfer" element={<BankTransfer />} />
-          <Route path="deposit" element={<BankDeposit />} />
+          <Route element={<BankAuthGate />}>
+            <Route index element={<BankHome />} />
+            <Route path="transfer" element={<BankTransfer />} />
+            <Route path="deposit" element={<BankDeposit />} />
+          </Route>
+          <Route path="login" element={<Navigate to="/bank" replace />} />
+          <Route path="register" element={<Navigate to="/bank" replace />} />
         </Route>
 
         <Route path="/" element={<Layout />}>
@@ -49,6 +52,7 @@ const App = () => {
         </Route>
       </Routes>
     </Router>
+    </AuthProvider>
   );
 };
 

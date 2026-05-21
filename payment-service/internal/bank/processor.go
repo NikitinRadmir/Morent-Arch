@@ -37,6 +37,8 @@ func (p *Processor) Handle(ctx context.Context, cmd *morentevents.BankCommand) m
 		return p.profile(ctx, cmd)
 	case "bank.deposit":
 		return p.deposit(ctx, cmd)
+	case "bank.pay":
+		return p.charge(ctx, cmd)
 	case "bank.transfer":
 		return p.transfer(ctx, cmd)
 	case "bank.transactions":
@@ -75,10 +77,19 @@ func (p *Processor) register(ctx context.Context, cmd *morentevents.BankCommand)
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
-	p.registry.RegisterClient(phone, displayName, hash, acc.ID)
+	now := time.Now().UTC()
+	if !cmd.SentAt.IsZero() {
+		now = cmd.SentAt.UTC()
+	}
+	cardNumber, expDate, cvv, cardHolder, err := GenerateVirtualCard(displayName, now, p.registry.HasCardNumber)
+	if err != nil {
+		return fail(resp, err, "internal")
+	}
+	p.registry.RegisterClient(phone, displayName, hash, acc.ID, cardNumber, expDate, cvv, cardHolder)
 	token := uuid.NewString()
 	p.registry.CreateSession(token, acc.ID)
-	profile, err := p.buildProfile(ctx, acc.ID, phone, displayName)
+	client, _ := p.registry.ClientByPhone(phone)
+	profile, err := p.buildProfile(ctx, client)
 	if err != nil {
 		return fail(resp, err, "internal")
 	}
@@ -100,7 +111,7 @@ func (p *Processor) login(ctx context.Context, cmd *morentevents.BankCommand) mo
 	}
 	token := uuid.NewString()
 	p.registry.CreateSession(token, client.AccountID)
-	profile, err := p.buildProfile(ctx, client.AccountID, client.Phone, client.DisplayName)
+	profile, err := p.buildProfile(ctx, client)
 	if err != nil {
 		return fail(resp, err, "internal")
 	}
@@ -120,11 +131,38 @@ func (p *Processor) logout(cmd *morentevents.BankCommand) morentevents.BankRespo
 
 func (p *Processor) profile(ctx context.Context, cmd *morentevents.BankCommand) morentevents.BankResponse {
 	resp := morentevents.BankResponse{RequestID: cmd.RequestID}
+	_, client, err := p.sessionClient(cmd.Token)
+	if err != nil {
+		return fail(resp, err, mapDomain(err))
+	}
+	profile, err := p.buildProfile(ctx, client)
+	if err != nil {
+		return fail(resp, err, "internal")
+	}
+	resp.OK = true
+	resp.Profile = profile
+	return resp
+}
+
+func (p *Processor) charge(ctx context.Context, cmd *morentevents.BankCommand) morentevents.BankResponse {
+	resp := morentevents.BankResponse{RequestID: cmd.RequestID}
 	accountID, client, err := p.sessionClient(cmd.Token)
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
-	profile, err := p.buildProfile(ctx, accountID, client.Phone, client.DisplayName)
+	amountMinor, err := rubToMinor(cmd.Amount)
+	if err != nil {
+		return fail(resp, err, "invalid_amount")
+	}
+	_, err = p.pay.Withdraw(ctx, service.BalanceChangeInput{
+		AccountID: accountID,
+		Amount:    amountMinor,
+		Currency:  currencyRUB,
+	})
+	if err != nil {
+		return fail(resp, err, mapDomain(err))
+	}
+	profile, err := p.buildProfile(ctx, client)
 	if err != nil {
 		return fail(resp, err, "internal")
 	}
@@ -151,7 +189,7 @@ func (p *Processor) deposit(ctx context.Context, cmd *morentevents.BankCommand) 
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
-	profile, err := p.buildProfile(ctx, accountID, client.Phone, client.DisplayName)
+	profile, err := p.buildProfile(ctx, client)
 	if err != nil {
 		return fail(resp, err, "internal")
 	}
@@ -166,14 +204,14 @@ func (p *Processor) transfer(ctx context.Context, cmd *morentevents.BankCommand)
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
-	recipientPhone, err := normalizePhone(cmd.RecipientPhone)
+	recipientCard, err := NormalizeCardNumber(cmd.RecipientCardNumber)
 	if err != nil {
-		return fail(resp, err, "invalid_phone")
+		return fail(resp, err, "invalid_card")
 	}
-	if recipientPhone == fromClient.Phone {
+	if recipientCard == fromClient.CardNumber {
 		return fail(resp, errors.New("cannot transfer to the same account"), "same_account")
 	}
-	toClient, ok := p.registry.ClientByPhone(recipientPhone)
+	toClient, ok := p.registry.ClientByCardNumber(recipientCard)
 	if !ok {
 		return fail(resp, errors.New("recipient not found"), "recipient_not_found")
 	}
@@ -192,7 +230,7 @@ func (p *Processor) transfer(ctx context.Context, cmd *morentevents.BankCommand)
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
-	profile, err := p.buildProfile(ctx, fromID, fromClient.Phone, fromClient.DisplayName)
+	profile, err := p.buildProfile(ctx, fromClient)
 	if err != nil {
 		return fail(resp, err, "internal")
 	}
@@ -254,16 +292,29 @@ func (p *Processor) sessionClient(token string) (string, *clientRecord, error) {
 	return accountID, client, nil
 }
 
-func (p *Processor) buildProfile(ctx context.Context, accountID, phone, displayName string) (*morentevents.BankProfile, error) {
-	acc, err := p.pay.GetAccount(ctx, accountID)
+func (p *Processor) buildProfile(ctx context.Context, client *clientRecord) (*morentevents.BankProfile, error) {
+	if client == nil {
+		return nil, errors.New("client not found")
+	}
+	if client.CardNumber == "" {
+		p.registry.EnsureClientCard(client.Phone, time.Now().UTC())
+		if updated, ok := p.registry.ClientByPhone(client.Phone); ok {
+			client = updated
+		}
+	}
+	acc, err := p.pay.GetAccount(ctx, client.AccountID)
 	if err != nil {
 		return nil, err
 	}
 	return &morentevents.BankProfile{
-		Phone:       phone,
-		DisplayName: displayName,
+		Phone:       client.Phone,
+		DisplayName: client.DisplayName,
 		Role:        "Клиент",
 		Balance:     minorToRub(acc.Balance),
+		CardNumber:  FormatCardNumber(client.CardNumber),
+		ExpDate:     client.ExpDate,
+		CVV:         client.CVV,
+		CardHolder:  client.CardHolder,
 	}, nil
 }
 

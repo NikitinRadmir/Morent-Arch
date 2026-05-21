@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -93,12 +94,10 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rental, errCreate := h.rentalService.CreateRental(user.ID, req.CarID, start, end)
+	bankToken := common.BankSessionToken(r, h.cfg)
+	rental, errCreate := h.rentalService.CreateRental(user.ID, req.CarID, start, end, req.TotalPrice, bankToken)
 	if errCreate != nil {
-		status := http.StatusInternalServerError
-		if errCreate == service.ErrCarNotFound || errCreate == service.ErrInvalidRentalPeriod || errCreate == service.ErrCarAlreadyBooked {
-			status = http.StatusBadRequest
-		}
+		status, msg := rentalErrorStatus(errCreate)
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:     time.Now(),
 			Type:     service.LogRental,
@@ -108,7 +107,7 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 			Result:   "error",
 			Message:  errCreate.Error(),
 		})
-		http.Error(w, errCreate.Error(), status)
+		http.Error(w, msg, status)
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -158,4 +157,29 @@ func (h *RentalHandler) BookedDates(w http.ResponseWriter, r *http.Request) {
 
 func (h *RentalHandler) authenticate(r *http.Request) (*models.User, error) {
 	return common.Authenticate(h.authService, h.cfg, r)
+}
+
+func rentalErrorStatus(err error) (int, string) {
+	switch {
+	case errors.Is(err, service.ErrCarNotFound):
+		return http.StatusNotFound, "автомобиль не найден"
+	case errors.Is(err, service.ErrInvalidRentalPeriod):
+		return http.StatusBadRequest, "некорректный период аренды"
+	case errors.Is(err, service.ErrRentalPriceMismatch):
+		return http.StatusBadRequest, "сумма аренды не совпадает с расчётом на сервере"
+	case errors.Is(err, service.ErrCarAlreadyBooked):
+		return http.StatusConflict, "автомобиль уже забронирован на выбранные даты"
+	case errors.Is(err, service.ErrBankSessionRequired):
+		return http.StatusUnauthorized, "для оплаты откройте Morent Bank и войдите в аккаунт"
+	case errors.Is(err, service.ErrBankUnavailable):
+		return http.StatusServiceUnavailable, "банковский сервис временно недоступен"
+	case errors.Is(err, service.ErrInsufficientBankBalance), errors.Is(err, service.ErrBankInsufficientFunds):
+		return http.StatusPaymentRequired, "недостаточно средств на банковском счёте"
+	case errors.Is(err, service.ErrBankSessionInvalid):
+		return http.StatusUnauthorized, "сессия банка истекла — откройте Morent Bank снова"
+	case errors.Is(err, service.ErrBankInvalidAmount):
+		return http.StatusBadRequest, "некорректная сумма оплаты"
+	default:
+		return http.StatusInternalServerError, err.Error()
+	}
 }

@@ -1,9 +1,11 @@
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const SignIn = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const redirectTo = location.state?.from || '/';
     const { login } = useContext(AuthContext);
     const [form, setForm] = useState({ email: '', password: '' });
     const [status, setStatus] = useState({ type: '', message: '' });
@@ -23,7 +25,7 @@ const SignIn = () => {
 
         if (result.success) {
             setStatus({ type: 'success', message: result.message });
-            navigate('/');
+            navigate(redirectTo);
         } else {
             setStatus({ type: 'error', message: result.message });
         }

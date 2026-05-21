@@ -32,6 +32,7 @@ type Config struct {
 	SessionCookieSecure   bool
 	SessionCookieDomain   string
 	BankSessionCookieName string
+	BankLinkSecret        string
 
 	RedisAddr             string
 	RedisPassword         string
@@ -73,6 +74,7 @@ func LoadFromEnv() (*Config, error) {
 		SessionCookieName:     getEnv("SESSION_COOKIE_NAME", "morent_session"),
 		SessionCookieDomain:   getEnv("SESSION_COOKIE_DOMAIN", ""),
 		BankSessionCookieName: getEnv("BANK_SESSION_COOKIE_NAME", "morent_bank_session"),
+		BankLinkSecret:        getEnv("BANK_LINK_SECRET", "morent-bank-link-dev"),
 		RedisAddr:            getEnv("REDIS_ADDR", ""),
 		RedisPassword:        getEnv("REDIS_PASSWORD", ""),
 		RedisDB:              getEnvInt("REDIS_DB", 0),
