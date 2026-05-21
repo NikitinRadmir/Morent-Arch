@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"morent-backend/internal/config"
@@ -16,6 +17,7 @@ import (
 type MinioStorage struct {
 	Client *minio.Client
 	Bucket string
+	logMu  sync.Mutex
 }
 
 func NewMinioStorage(cfg *config.Config) (*MinioStorage, error) {
@@ -58,6 +60,9 @@ func (s *MinioStorage) Upload(ctx context.Context, endpoint string, useSSL bool,
 // AppendDailyLog appends a log line to a daily log file in MinIO (logs/YYYY-MM-DD.log).
 // If the file does not exist, it will be created. Content is rewritten on each append.
 func (s *MinioStorage) AppendDailyLog(ctx context.Context, message string) error {
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+
 	today := time.Now().Format("2006-01-02")
 	objectName := fmt.Sprintf("logs/%s.log", today)
 	line := fmt.Sprintf("%s %s\n", time.Now().Format(time.RFC3339), message)
