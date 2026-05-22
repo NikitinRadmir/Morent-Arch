@@ -47,12 +47,19 @@
     environment:
       DOTNET_ENVIRONMENT: Docker
 
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=email_service;Username=postgres;Password=password123
+      ConnectionStrings__EmailDb: Host=postgres;Port=5432;Database=email_service;Username=postgres;Password=password123
+
+      Kafka__Enabled: ${KAFKA_ENABLED:-true}
+      Kafka__Brokers: ${KAFKA_BROKERS:-host.docker.internal:9092}
+      Kafka__Topic: ${KAFKA_TOPIC_EMAILS:-morent.emails}
+      Kafka__GroupId: email-service
 
   # RabbitMQ
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: guest
-      RabbitMQ__Password: guest
+      RabbitMq__Host: rabbitmq://rabbitmq
+      RabbitMq__User: guest
+      RabbitMq__Pass: guest
+
+      Templates__BasePath: /app/Templates
 
   # Resend
       Resend__ApiKey: re_isY4dWzL_NxA825SJT2ckFsag7UpZ9aek
@@ -93,7 +100,7 @@
       POSTGRES_PASSWORD: password123
 
     ports:
-      - "5433:5432"
+      - "5435:5432"
 
     volumes:
       - pg-data:/var/lib/postgresql/data

@@ -1,10 +1,10 @@
-﻿<subject>🚗 Напоминание: бронь #{{ BookingId }} начинается завтра</subject>
+<subject>Вход в аккаунт Morent</subject>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Напоминание об аренде</title>
+    <title>Вход в аккаунт</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -66,17 +66,6 @@
             margin-bottom: 0;
         }
 
-        .button {
-            display: inline-block;
-            padding: 14px 32px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            margin: 10px 0;
-        }
-
         .footer {
             background: #f8f9fa;
             padding: 20px;
@@ -99,39 +88,26 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚗 Morent</h1>
+            <h1>Вход в аккаунт</h1>
         </div>
 
         <div class="content">
-            <p class="greeting">Здравствуйте, {{ CustomerName }}!</p>
+            <p class="greeting">Здравствуйте, {{ user_name }}!</p>
 
-            <p class="instruction">Ваша аренда автомобиля начинается <strong>завтра</strong>.</p>
+            <p class="instruction">Зафиксирован вход в ваш аккаунт Morent.</p>
 
             <div class="details">
-                <p><strong>Номер брони:</strong> {{ BookingId }}</p>
-                <p><strong>Автомобиль:</strong> {{ CarModel }}</p>
-                <p><strong>Начало:</strong> {{ StartDate }}</p>
-                <p><strong>Место выдачи:</strong> {{ PickupLocation }}</p>
+                <p><strong>Аккаунт:</strong> {{ user_email }}</p>
+                <p><strong>Время:</strong> {{ login_time }}</p>
             </div>
 
-            <p style="text-align: center;">
-                <a href="{{ ContractLink }}" class="button">📄 Открыть договор</a>
-            </p>
-
-            <p class="instruction"><strong>Что взять с собой:</strong></p>
-            <ul class="instruction">
-                <li>Водительское удостоверение</li>
-                <li>Паспорт или иной документ, удостоверяющий личность</li>
-                <li>Банковскую карту для депозита</li>
-            </ul>
-
             <div class="security-note">
-                Если бронь вам не знакома, проигнорируйте это письмо.
+                Если это были не вы, смените пароль в личном кабинете и свяжитесь с поддержкой.
             </div>
         </div>
 
         <div class="footer">
-            <p><strong>Morent</strong><br>Аренда премиальных автомобилей</p>
+            <p><strong>Morent</strong><br>Аренда автомобилей</p>
             <p style="margin-top: 15px; font-size: 12px;">Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
         </div>
     </div>

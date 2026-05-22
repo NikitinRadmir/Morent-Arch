@@ -114,7 +114,7 @@
         </div>
 
         <div class="content">
-            <p class="greeting">Здравствуйте, {{CustomerName}}!</p>
+            <p class="greeting">Здравствуйте, {{ CustomerName }}!</p>
 
             <p class="instruction">
                 Спасибо за регистрацию в Morent. Чтобы завершить создание аккаунта,
@@ -126,11 +126,11 @@
             </p>
 
             <div class="code-box">
-                <div class="verification-code">{{VerificationCode}}</div>
+                <div class="verification-code">{{ VerificationCode }}</div>
             </div>
 
             <p style="text-align: center;">
-                <a href="{{VerificationLink}}" class="button">
+                <a href="{{ VerificationLink }}" class="button">
                     ✅ Подтвердить email
                 </a>
             </p>
@@ -143,8 +143,8 @@
             <p style="font-size: 14px; color: #666; margin-top: 30px;">
                 <strong>Альтернативный способ:</strong><br>
                 Если кнопка выше не работает, скопируйте и вставьте эту ссылку в браузер:<br>
-                <a href="{{VerificationLink}}" style="word-break: break-all; color: #667eea;">
-                    {{VerificationLink}}
+                <a href="{{ VerificationLink }}" style="word-break: break-all; color: #667eea;">
+                    {{ VerificationLink }}
                 </a>
             </p>
         </div>

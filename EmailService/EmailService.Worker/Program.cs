@@ -56,6 +56,12 @@ try
 
     builder.Services.AddEmailInfrastructure(builder.Configuration);
 
+    if (builder.Configuration.GetValue<bool>("Kafka:Enabled"))
+    {
+        builder.Services.AddKafkaEmailConsumer();
+        Log.Information("Kafka email consumer enabled");
+    }
+
     if (builder.Environment.IsDevelopment())
     {
         var resendKey = builder.Configuration["Resend:ApiKey"];

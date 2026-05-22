@@ -16,8 +16,10 @@
 		<!-- 🔹 Конфигурация и кэш -->
 
 		<!-- 🔹 HttpClient + Polly (классическая совместимая пара) -->
+		<PackageReference Include="Confluent.Kafka" Version="2.6.1" />
 		<PackageReference Include="MailKit" Version="4.16.0" />
 		<PackageReference Include="MassTransit.RabbitMQ" Version="8.1.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />

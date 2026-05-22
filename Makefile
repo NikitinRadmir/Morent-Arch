@@ -15,6 +15,8 @@ AGGREGATOR_DIR := $(ROOT_DIR)/car-aggregator-project
 PAYMENT_DIR    := $(ROOT_DIR)/payment-service
 GENERATOR_DIR  := $(ROOT_DIR)/generator-service
 EMAIL_DIR      := $(ROOT_DIR)/EmailService
+EMAIL_PROJECT  := $(EMAIL_DIR)/EmailService.Api
+EMAIL_FILE     := $(EMAIL_PROJECT)/docker-compose.yml
 EMAILTEST_DIR  := $(ROOT_DIR)/emailtest
 
 # --- Kafka (инфра, общая сеть morent-kafka → kafka_morent-kafka) ---
@@ -58,7 +60,7 @@ build-generator:
 	$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml build
 
 build-email:
-	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml build
+	$(DOCKER) --project-directory $(EMAIL_PROJECT) -f $(EMAIL_FILE) build
 
 # --- Запуск / остановка отдельных сервисов ---
 
@@ -126,15 +128,15 @@ generator-logs:
 	$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml logs -f
 
 email-up:
-	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml up -d --build
+	$(DOCKER) --project-directory $(EMAIL_PROJECT) -f $(EMAIL_FILE) up -d --build
 
 email-down:
-	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml down
+	$(DOCKER) --project-directory $(EMAIL_PROJECT) -f $(EMAIL_FILE) down
 
 email-build: build-email
 
 email-logs:
-	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml logs -f
+	$(DOCKER) --project-directory $(EMAIL_PROJECT) -f $(EMAIL_FILE) logs -f
 
 emailtest-up:
 	$(DOCKER) --project-directory $(EMAILTEST_DIR) -f $(EMAILTEST_DIR)/docker-compose.yml up -d --build

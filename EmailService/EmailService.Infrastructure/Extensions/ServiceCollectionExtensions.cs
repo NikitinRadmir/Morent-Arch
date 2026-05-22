@@ -1,6 +1,7 @@
 ﻿using EmailService.Core.Contracts;
 using EmailService.Core.Extensions;
 using EmailService.Infrastructure.Consumers;
+using EmailService.Infrastructure.Messaging;
 using EmailService.Infrastructure.Options;
 using EmailService.Infrastructure.Persistence;
 using EmailService.Infrastructure.Providers;
@@ -33,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.Configure<TemplatesOptions>(config.GetSection("Templates"));
         services.Configure<ResendOptions>(config.GetSection("Resend"));
         services.Configure<RabbitMqOptions>(config.GetSection("RabbitMq"));
+        services.Configure<KafkaOptions>(config.GetSection("Kafka"));
 
         services.AddSingleton<IMemoryCache, MemoryCache>();
         services.AddSingleton<ITemplateRenderer, ScribanTemplateRenderer>();
@@ -62,6 +64,15 @@ public static class ServiceCollectionExtensions
             });
         });
 
+        return services;
+    }
+
+    /// <summary>
+    /// Регистрирует Kafka consumer для событий <c>morent.email.send</c>.
+    /// </summary>
+    public static IServiceCollection AddKafkaEmailConsumer(this IServiceCollection services)
+    {
+        services.AddHostedService<KafkaEmailConsumer>();
         return services;
     }
 }
