@@ -1,7 +1,9 @@
-# Elasticsearch + Kibana + Filebeat + Heartbeat
+# Elasticsearch + Kibana + Filebeat + Heartbeat + Prometheus + Grafana
 # Запуск из корня: make obs-up
 # Kibana: http://localhost:5601
 # Elasticsearch: http://localhost:9200
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3001 (admin/admin)
 
 services:
   elasticsearch:
@@ -74,8 +76,83 @@ services:
       - kafka_morent-kafka
       - default
 
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: morent-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      - blackbox-exporter
+      - cadvisor
+    networks:
+      - morent-obs
+      - kafka_morent-kafka
+      - default
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: morent-blackbox-exporter
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "${BLACKBOX_PORT:-9115}:9115"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - morent-obs
+      - default
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: morent-cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "${CADVISOR_PORT:-8089}:8080"
+    restart: unless-stopped
+    networks:
+      - morent-obs
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: morent-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - morent-obs
+
 volumes:
   es_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   morent-obs:

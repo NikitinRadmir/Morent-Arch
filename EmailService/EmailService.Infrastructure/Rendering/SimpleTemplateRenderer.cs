@@ -1,18 +1,18 @@
-﻿using System.Text.RegularExpressions;
+using System.Net;
+using System.Text.RegularExpressions;
 using EmailService.Core.Contracts;
 using EmailService.Core.Exceptions;
 using EmailService.Core.Models;
 using EmailService.Infrastructure.Options;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using Scriban;
 
 namespace EmailService.Infrastructure.Rendering;
 
 /// <summary>
-/// Renders email templates using the Scriban template engine.
+/// Renders email templates using simple HTML-encoded placeholders.
 /// </summary>
-public partial class ScribanTemplateRenderer : ITemplateRenderer
+public partial class SimpleTemplateRenderer : ITemplateRenderer
 {
     private readonly TemplatesOptions _options;
     private readonly IMemoryCache _cache;
@@ -20,11 +20,11 @@ public partial class ScribanTemplateRenderer : ITemplateRenderer
     private static readonly Regex SubjectRegex = MySubjectRegex();
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ScribanTemplateRenderer"/> class.
+    /// Initializes a new instance of the <see cref="SimpleTemplateRenderer"/> class.
     /// </summary>
     /// <param name="options">Template rendering configuration options.</param>
     /// <param name="cache">Memory cache instance.</param>
-    public ScribanTemplateRenderer(
+    public SimpleTemplateRenderer(
         IOptions<TemplatesOptions> options,
         IMemoryCache cache)
     {
@@ -58,20 +58,15 @@ public partial class ScribanTemplateRenderer : ITemplateRenderer
 
         var cacheKey = $"tpl:{templateKey}";
 
-        var template = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        var templateHtml = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow =
                 TimeSpan.FromSeconds(_options.CacheDurationSeconds);
 
-            var html = await File.ReadAllTextAsync(filePath, ct);
+            return await File.ReadAllTextAsync(filePath, ct);
+        }) ?? throw new InvalidOperationException($"Template '{templateKey}' could not be loaded.");
 
-            return Template.Parse(html);
-        })!;
-
-        var renderedHtml = await template.RenderAsync(
-            request.Variables,
-            memberRenamer: member => member.Name);
-
+        var renderedHtml = RenderVariables(templateHtml, request.Variables);
         var subjectMatch = SubjectRegex.Match(renderedHtml);
 
         var subject = subjectMatch.Success
@@ -98,4 +93,21 @@ public partial class ScribanTemplateRenderer : ITemplateRenderer
     /// <returns>Compiled regular expression instance.</returns>
     [GeneratedRegex(@"<subject>(.*?)</subject>", RegexOptions.Singleline)]
     private static partial Regex MySubjectRegex();
+
+    private static string RenderVariables(
+        string template,
+        IReadOnlyDictionary<string, string> variables)
+    {
+        return VariableRegex().Replace(template, match =>
+        {
+            var key = match.Groups[1].Value.Trim();
+
+            return variables.TryGetValue(key, out var value)
+                ? WebUtility.HtmlEncode(value)
+                : string.Empty;
+        });
+    }
+
+    [GeneratedRegex(@"\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}", RegexOptions.CultureInvariant)]
+    private static partial Regex VariableRegex();
 }

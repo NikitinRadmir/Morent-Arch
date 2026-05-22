@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useCallback, useContext, useState, useEffect } from 'react';
 import { SearchContext } from '../context/SearchContext';
 import { useSearchParams } from 'react-router-dom';
 import LeftMenu from '../components/LeftMenu';
@@ -31,28 +31,51 @@ const Category = () => {
 
     // Обновление URL при изменении searchQuery
     useEffect(() => {
+        const nextParams = new URLSearchParams(searchParams);
         if (searchQuery) {
-            searchParams.set('q', searchQuery);
+            nextParams.set('q', searchQuery);
         } else {
-            searchParams.delete('q');
+            nextParams.delete('q');
         }
-        setSearchParams(searchParams);
+        setSearchParams(nextParams);
     }, [searchQuery, searchParams, setSearchParams]);
 
     // Обновление URL при изменении фильтров
     useEffect(() => {
-        searchParams.delete('carType');
-        searchParams.delete('capacity');
-        searchParams.delete('priceUnder');
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('carType');
+        nextParams.delete('capacity');
+        nextParams.delete('priceUnder');
 
-        filters.types.forEach(type => searchParams.append('carType', type));
-        filters.capacities.forEach(capacity => searchParams.append('capacity', capacity));
+        filters.types.forEach(type => nextParams.append('carType', type));
+        filters.capacities.forEach(capacity => nextParams.append('capacity', capacity));
         if (filters.maxPrice) {
-            searchParams.set('priceUnder', filters.maxPrice);
+            nextParams.set('priceUnder', filters.maxPrice);
         }
 
-        setSearchParams(searchParams);
+        setSearchParams(nextParams);
     }, [filters, searchParams, setSearchParams]);
+
+    // Применение фильтров и поиска (логическое И)
+    const applyFiltersAndSearch = useCallback((data) => {
+        let filteredData = data;
+
+        filteredData = filteredData.filter(car => {
+            const matchesType = filters.types.length === 0 || filters.types.includes(car.type);
+            const matchesCapacity = filters.capacities.length === 0 || filters.capacities.includes(String(car.capacity));
+            const matchesPrice = !filters.maxPrice || car.price <= Number(filters.maxPrice);
+
+            return matchesType && matchesCapacity && matchesPrice;
+        });
+
+        if (searchQuery.trim() !== "") {
+            filteredData = filteredData.filter(car =>
+                car.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+
+        setFilteredCars(filteredData);
+    }, [filters, searchQuery]);
 
     // Загрузка всех машин (GraphQL)
     useEffect(() => {
@@ -82,37 +105,14 @@ const Category = () => {
             }
         };
         load();
-    }, []);
-
-    // Применение фильтров и поиска (логическое И)
-    const applyFiltersAndSearch = (data) => {
-        let filteredData = data;
-
-        // Применяем фильтры
-        filteredData = filteredData.filter(car => {
-            const matchesType = filters.types.length === 0 || filters.types.includes(car.type);
-            const matchesCapacity = filters.capacities.length === 0 || filters.capacities.includes(String(car.capacity));
-            const matchesPrice = !filters.maxPrice || car.price <= Number(filters.maxPrice);
-
-            return matchesType && matchesCapacity && matchesPrice;
-        });
-
-        // Применяем поиск
-        if (searchQuery.trim() !== "") {
-            filteredData = filteredData.filter(car =>
-                car.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        setFilteredCars(filteredData);
-    };
+    }, [applyFiltersAndSearch]);
 
     // Реакция на изменения фильтров и поисковика
     useEffect(() => {
         if (allCars.length > 0) {
             applyFiltersAndSearch(allCars);
         }
-    }, [filters, searchQuery, allCars]);
+    }, [filters, searchQuery, allCars, applyFiltersAndSearch]);
 
     // Обработка изменения фильтров
     const handleFilterChange = (newFilters) => {

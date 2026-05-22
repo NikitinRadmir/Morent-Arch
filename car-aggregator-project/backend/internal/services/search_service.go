@@ -34,11 +34,6 @@ func NewSearchService(
 	api := dadata.NewCleanApi()
 	carAPIClient := NewCarAPIClient(os.Getenv("CARAPI_TOKEN"), os.Getenv("CARAPI_SECRET"))
 
-	err := carAPIClient.Login(context.Background())
-	if err != nil {
-		panic(fmt.Sprintf("failed to login to Car API: %v", err))
-	}
-
 	return &searchService{
 		repository:   repository,
 		validator:    validator,

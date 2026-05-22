@@ -616,6 +616,8 @@ func (h *AdminHandler) uploadAggregatorImage(ctx context.Context, imageURL strin
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Accept", "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8")
+	req.Header.Set("User-Agent", "Morent/1.0 (+local-dev)")
 	resp, err := h.httpClient.Do(req)
 	if err != nil {
 		return "", err
@@ -629,15 +631,76 @@ func (h *AdminHandler) uploadAggregatorImage(ctx context.Context, imageURL strin
 		return "", fmt.Errorf("empty image")
 	}
 
-	ext := filepath.Ext(strings.ToLower(imageURL))
-	if ext == "" || len(ext) > 6 {
-		ext = ".jpg"
+	contentType := strings.ToLower(strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0]))
+	detectedType := strings.ToLower(http.DetectContentType(data))
+	if contentType == "" || contentType == "application/octet-stream" {
+		contentType = detectedType
 	}
-	objectName := fmt.Sprintf("cars/%d_%s_%s%s", time.Now().UnixNano(), strings.ToLower(strings.TrimSpace(make)), strings.ToLower(strings.TrimSpace(model)), ext)
-	objectName = strings.ReplaceAll(objectName, " ", "_")
-	contentType := resp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "image/jpeg"
+	if !strings.HasPrefix(contentType, "image/") && strings.HasPrefix(detectedType, "image/") {
+		contentType = detectedType
 	}
+	if !isAllowedRemoteImageType(contentType) {
+		return "", fmt.Errorf("remote URL is not a supported image: %s", contentType)
+	}
+
+	ext := imageExtension(imageURL, contentType)
+	objectName := fmt.Sprintf("cars/%d_%s_%s%s", time.Now().UnixNano(), sanitizeObjectPart(make), sanitizeObjectPart(model), ext)
 	return h.storage.Upload(ctx, h.cfg.MinioPublicEndpoint, h.cfg.MinioUseSSL, objectName, bytes.NewReader(data), int64(len(data)), contentType)
+}
+
+func imageExtension(imageURL string, contentType string) string {
+	cleanURL := strings.Split(imageURL, "?")[0]
+	ext := strings.ToLower(filepath.Ext(cleanURL))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif":
+		return ext
+	}
+	switch strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) {
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	case "image/gif":
+		return ".gif"
+	case "image/avif":
+		return ".avif"
+	default:
+		return ".jpg"
+	}
+}
+
+func isAllowedRemoteImageType(contentType string) bool {
+	switch strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) {
+	case "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif":
+		return true
+	default:
+		return false
+	}
+}
+
+func sanitizeObjectPart(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "unknown"
+	}
+
+	var builder strings.Builder
+	lastSeparator := false
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			builder.WriteRune(r)
+			lastSeparator = false
+			continue
+		}
+		if !lastSeparator {
+			builder.WriteByte('_')
+			lastSeparator = true
+		}
+	}
+
+	cleaned := strings.Trim(builder.String(), "_")
+	if cleaned == "" {
+		return "unknown"
+	}
+	return cleaned
 }

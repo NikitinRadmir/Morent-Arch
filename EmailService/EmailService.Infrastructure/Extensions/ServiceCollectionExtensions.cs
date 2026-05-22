@@ -37,7 +37,7 @@ public static class ServiceCollectionExtensions
         services.Configure<KafkaOptions>(config.GetSection("Kafka"));
 
         services.AddSingleton<IMemoryCache, MemoryCache>();
-        services.AddSingleton<ITemplateRenderer, ScribanTemplateRenderer>();
+        services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 
         // 🔹 SMTP Provider
         services.Configure<SmtpOptions>(config.GetSection("Smtp"));

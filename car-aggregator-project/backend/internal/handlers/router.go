@@ -10,6 +10,13 @@ func NewRouter(
 ) *gin.Engine {
 	router := gin.Default()
 
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "healthy",
+			"service": "car-aggregator",
+		})
+	})
+
 	// Search endpoints
 	search := router.Group("/search")
 	{

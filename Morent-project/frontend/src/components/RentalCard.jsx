@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import CarImage from './CarImage';
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -12,7 +13,7 @@ const RentalCard = ({ rental }) => {
     return (
         <div className="rental-card">
             <div className="rental-card__image">
-                <img src={car.imgSrc} alt={car.name} />
+                <CarImage src={car.imgSrc} alt={car.name} fallbackKey={`${car.name} ${car.type}`} />
             </div>
             <div className="rental-card__content">
                 <div className="rental-card__header">

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import NotFound from './NotFound';
+import CarImage from '../components/CarImage';
 
 const API_BASE = API_BASE_URL;
 const estimateRentalPrice = (msrp) => {
@@ -105,7 +106,7 @@ const Admin = () => {
             return;
         }
         loadTab(activeTab);
-    }, [activeTab, user]);
+    }, [activeTab, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Если пользователь не админ - показываем 404
     const userRole = user?.role || user?.Role;
@@ -376,7 +377,7 @@ const Admin = () => {
                                 <td>{car.id}</td>
                                 <td>
                                     {car.imgSrc ? (
-                                        <img src={car.imgSrc} alt={car.name} className="admin-table__img" />
+                                        <CarImage src={car.imgSrc} alt={car.name} className="admin-table__img" fallbackKey={`${car.name} ${car.type}`} />
                                     ) : (
                                         <span className="admin-table__no-img">—</span>
                                     )}
@@ -432,7 +433,7 @@ const Admin = () => {
                                         <td>{trim.id}</td>
                                         <td>
                                             {trim.imageUrl ? (
-                                                <img src={trim.imageUrl} alt={`${trim.make} ${trim.model}`} className="admin-table__img" />
+                                                <CarImage src={trim.imageUrl} alt={`${trim.make} ${trim.model}`} className="admin-table__img" fallbackKey={`${trim.make} ${trim.model}`} />
                                             ) : (
                                                 <span className="admin-table__no-img">—</span>
                                             )}
@@ -718,7 +719,7 @@ const Admin = () => {
                             </div>
                             {form.imgSrc && (
                                 <div style={{ marginTop: '8px' }}>
-                                    <img src={form.imgSrc} alt="Preview" style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                                    <CarImage src={form.imgSrc} alt="Preview" fallbackKey={form.name} style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
                                 </div>
                             )}
                             <input type="text" value={form.imgSrc} onChange={(e) => updateModalForm({ imgSrc: e.target.value })} placeholder="Или введите URL" style={{ marginTop: '8px' }} />

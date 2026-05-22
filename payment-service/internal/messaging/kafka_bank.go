@@ -57,7 +57,10 @@ func NewBankKafka(cfg config.Config, processor *bank.Processor, log *slog.Logger
 }
 
 func (k *BankKafka) Run(ctx context.Context) error {
-	k.log.Info("payment-service bank kafka consumer started")
+	if err := waitForKafkaTopic(ctx, k.reader.Config().Brokers, k.reader.Config().Topic, k.log); err != nil {
+		return err
+	}
+	k.log.Info("payment-service bank kafka consumer started", "topic", k.reader.Config().Topic)
 	for {
 		msg, err := k.reader.FetchMessage(ctx)
 		if err != nil {
@@ -114,4 +117,30 @@ func (k *BankKafka) Close() error {
 		}
 	}
 	return err
+}
+
+func waitForKafkaTopic(ctx context.Context, brokers []string, topic string, log *slog.Logger) error {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		for _, broker := range brokers {
+			conn, err := kafka.DialContext(ctx, "tcp", strings.TrimSpace(broker))
+			if err != nil {
+				continue
+			}
+			partitions, err := conn.ReadPartitions(topic)
+			_ = conn.Close()
+			if err == nil && len(partitions) > 0 {
+				return nil
+			}
+		}
+
+		log.Warn("waiting for kafka bank topic", "topic", topic, "brokers", strings.Join(brokers, ","))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
 }

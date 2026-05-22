@@ -14,14 +14,9 @@ filebeat.autodiscover:
                 - add_docker_metadata: ~
                 - decode_json_fields:
                     fields: ["message"]
-                    target: ""
-                    overwrite_keys: true
+                    target: "app"
+                    overwrite_keys: false
                     add_error_key: true
-                - rename:
-                    fields:
-                      - {from: "log_type", to: "log.type"}
-                    ignore_missing: true
-                    fail_on_error: false
                 - add_fields:
                     target: ""
                     fields:
@@ -37,6 +32,8 @@ processors:
               message: "GET /health"
           - contains:
               message: "\"path\":\"/health\""
+          - equals:
+              app.path: "/health"
 
 setup.ilm.enabled: false
 setup.template.name: "morent-logs"

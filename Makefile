@@ -172,6 +172,8 @@ up: kafka-up user-up morent-up email-up aggregator-up payment-up generator-up
 	@echo "Стек поднят."
 	@echo "  Kafka UI:     http://localhost:8090"
 	@echo "  Kibana:       http://localhost:5601  (после make obs-up)"
+	@echo "  Prometheus:   http://localhost:9090  (после make obs-up)"
+	@echo "  Grafana:      http://localhost:3001  (admin/admin, после make obs-up)"
 	@echo "  Morent UI:    http://localhost:$${FRONTEND_PORT:-5173}"
 	@echo "  Morent API:   http://localhost:$${BACKEND_PORT:-1488}"
 	@echo "  Email API:    http://localhost:$${EMAIL_API_PORT:-5112}"
@@ -200,7 +202,7 @@ ps:
 	@$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml ps
 	@echo ""
 	@echo "=== EmailService ==="
-	@$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml ps
+	@$(DOCKER) --project-directory $(EMAIL_PROJECT) -f $(EMAIL_FILE) ps
 
 logs:
 	@echo "Логи Kafka (Ctrl+C для выхода)..."
@@ -223,7 +225,7 @@ help:
 	@echo "Kafka (infra/kafka):"
 	@echo "  make kafka-up / kafka-down / kafka-logs / kafka-ps"
 	@echo ""
-	@echo "Observability (Elasticsearch, Kibana, Filebeat, Heartbeat):"
+	@echo "Observability (Elasticsearch, Kibana, Filebeat, Heartbeat, Prometheus, Grafana):"
 	@echo "  make obs-up / obs-down / obs-logs / obs-ps"
 	@echo ""
 	@echo "Отдельные сервисы (примеры):"

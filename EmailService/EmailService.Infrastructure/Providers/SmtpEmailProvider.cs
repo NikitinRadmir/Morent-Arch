@@ -23,9 +23,12 @@ public class SmtpEmailProvider : IEmailProvider
     {
         var message = new MimeMessage();
 
+        var fromEmail = _config["Smtp:FromEmail"]
+            ?? throw new InvalidOperationException("SMTP FromEmail not configured");
+
         message.From.Add(new MailboxAddress(
             _config["Smtp:FromName"] ?? "AutoRental",
-            _config["Smtp:FromEmail"]));
+            fromEmail));
 
         message.To.Add(new MailboxAddress("", email.To));
         message.Subject = email.Subject;
@@ -47,6 +50,11 @@ public class SmtpEmailProvider : IEmailProvider
 
         if (!string.IsNullOrEmpty(username))
         {
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException("SMTP password not configured");
+            }
+
             await client.AuthenticateAsync(username, password, ct);
         }
 

@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  - job_name: blackbox-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://host.docker.internal:1488/health
+          - http://host.docker.internal:8081/health
+          - http://host.docker.internal:8082/health
+          - http://host.docker.internal:8083/health
+          - http://host.docker.internal:5112/health
+        labels:
+          probe_group: health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: blackbox-ready
+    metrics_path: /probe
+    params:
+      module: [http_2xx_or_503]
+    static_configs:
+      - targets:
+          - http://host.docker.internal:1488/ready
+          - http://host.docker.internal:8081/ready
+        labels:
+          probe_group: ready
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

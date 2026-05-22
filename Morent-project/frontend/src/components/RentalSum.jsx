@@ -1,3 +1,5 @@
+import CarImage from './CarImage';
+
 const RentalSum = ({car, totalAmount}) => {
     return (
         <div className="row p-4">
@@ -8,7 +10,7 @@ const RentalSum = ({car, totalAmount}) => {
                 </div>
                 <div className="row rent-name-img">
                     <div className="rental-img-container mr-4">
-                        <img src={car.imgSrc} alt=""/>
+                        <CarImage src={car.imgSrc} alt={car.name} fallbackKey={`${car.name} ${car.type}`} />
                     </div>
                     <div className="rental-name ml-4">
                         <h1 className="pb-3">{car.name}</h1>

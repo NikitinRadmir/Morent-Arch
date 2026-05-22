@@ -12,12 +12,12 @@
       ASPNETCORE_URLS: http://+:8080
 
       # PostgreSQL
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=email_service;Username=postgres;Password=password123
+      ConnectionStrings__EmailDb: Host=postgres;Port=5432;Database=email_service;Username=postgres;Password=password123
 
       # RabbitMQ
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: guest
-      RabbitMQ__Password: guest
+      RabbitMq__Host: rabbitmq://rabbitmq
+      RabbitMq__User: guest
+      RabbitMq__Pass: guest
 
     ports:
       - "5112:8080"

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
@@ -40,10 +40,10 @@ const PayForm = ({ car, setTotalAmount }) => {
     };
 
     // True если данная дата среди занятых
-    const isDateInBookedRange = (date) => {
+    const isDateInBookedRange = useCallback((date) => {
         if (!bookedDateStrings || bookedDateStrings.length === 0) return false;
         return bookedDateStrings.includes(normalizeDateToISO(date));
-    };
+    }, [bookedDateStrings]);
 
     const calendarDays = useMemo(() => {
         const result = [];
@@ -65,7 +65,7 @@ const PayForm = ({ car, setTotalAmount }) => {
             result.push(null);
         }
         return result;
-    }, [currentMonth, today, bookedDateStrings]);
+    }, [currentMonth, today, isDateInBookedRange]);
 
     const handlePrevMonth = () => {
         if (currentMonth.getFullYear() === today.getFullYear() && currentMonth.getMonth() === today.getMonth()) {
@@ -159,7 +159,7 @@ const PayForm = ({ car, setTotalAmount }) => {
             setNotifications((prev) => prev.filter((n) => n.id !== idOrMessage));
         }
     };
-    const calculateTotalAmount = (datePick, dateDrop) => {
+    const calculateTotalAmount = useCallback((datePick, dateDrop) => {
         if (!datePick || !dateDrop) return;
 
         const pickDate = new Date(datePick);
@@ -177,13 +177,13 @@ const PayForm = ({ car, setTotalAmount }) => {
         const total = diffInDays * car.price;
         setLocalTotalAmount(total);
         setTotalAmount(total);
-    };
+    }, [car.price, setTotalAmount]);
 
     useEffect(() => {
         if (selectedStartDate && selectedEndDate) {
             calculateTotalAmount(formatDate(selectedStartDate), formatDate(selectedEndDate));
         }
-    }, [selectedStartDate, selectedEndDate]);
+    }, [selectedStartDate, selectedEndDate, calculateTotalAmount]);
 
     // загрузка бронирований для машины
     useEffect(() => {
@@ -569,4 +569,3 @@ const PayForm = ({ car, setTotalAmount }) => {
 };
 
 export default PayForm;
-    

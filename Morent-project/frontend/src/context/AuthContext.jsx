@@ -40,28 +40,6 @@ const persistUser = (user) => {
     }
 };
 
-const parseError = async (response) => {
-    try {
-        const text = await response.text();
-        try {
-            const data = JSON.parse(text);
-            if (data && data.error) {
-                return data.error;
-            }
-            if (typeof data === 'string') {
-                return data;
-            }
-        } catch {
-            if (text) {
-                return text;
-            }
-        }
-    } catch {
-        // ignore
-    }
-    return response.statusText || 'Request failed';
-};
-
 const normalizeFavorites = (data) => {
     if (!Array.isArray(data)) return [];
     return data
@@ -115,7 +93,11 @@ export const AuthProvider = ({ children }) => {
             },
             body: JSON.stringify(payload),
         });
-        return response.json();
+        if (response.status === 204) {
+            return null;
+        }
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
     }, []);
 
     const authRequest = useCallback(async (path, options = {}) => {

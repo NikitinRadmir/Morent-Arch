@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import CarImage from "./CarImage";
+import { getCarFallbackImage, normalizeCarImageSrc } from "../utils/carImages";
 
 const CarInfo = ({ props }) => {
-  const [selectedImage, setSelectedImage] = useState(null); // Состояние для выбранного изображения
+  const fallbackImage = getCarFallbackImage(props.name, props.type);
+  const carImage = normalizeCarImageSrc(props.imgSrc, fallbackImage);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  // Функция для открытия модального окна с выбранным изображением
   const openModal = (imageSrc) => {
     setSelectedImage(imageSrc);
   };
 
-  // Функция для закрытия модального окна
   const closeModal = () => {
     setSelectedImage(null);
   };
@@ -36,22 +38,23 @@ const CarInfo = ({ props }) => {
                 Safety and comfort while driving a <br />
                 futuristic and elegant sports car
               </p>
-              <img
+              <CarImage
                 src={props.imgSrc}
                 alt="Current Car"
                 className="carImg"
+                fallbackKey={`${props.name} ${props.type}`}
               />
             </div>
           </div>
 
-          {/* Миниатюры */}
           <div className="thumbnails mt-3 row">
             <div className="col-4 pl-0">
-              <img
+              <CarImage
                 src={props.imgSrc}
                 alt={props.name}
                 className="rounded border border-primary img-thumbnail"
-                onClick={() => openModal(props.imgSrc)} // Открываем модальное окно при клике
+                onClick={() => openModal(carImage)}
+                fallbackKey={`${props.name} ${props.type}`}
                 style={{ cursor: "pointer" }}
               />
             </div>
@@ -76,7 +79,6 @@ const CarInfo = ({ props }) => {
           </div>
         </div>
 
-        {/* Правая колонка */}
         <div className="col-md-6">
           <div className="card rounded p-4">
             <h1 className="card-title fw-bold">{props.name}</h1>
@@ -90,7 +92,6 @@ const CarInfo = ({ props }) => {
             </div>
             <p className="card-text text-muted">{props.description}</p>
 
-            {/* Характеристики */}
             <div className="row mt-4">
               <div className="col-3">
                 <p style={{ color: "#90A3BF" }}>Type Car</p>
@@ -110,7 +111,6 @@ const CarInfo = ({ props }) => {
               </div>
             </div>
 
-            {/* Цена и кнопка */}
             <div className="d-flex justify-content-between align-items-center mt-5">
               <h2 className="fw-bold price">
                 ${props.price}.00 /<span className="highlited-gray">day</span>
@@ -126,7 +126,6 @@ const CarInfo = ({ props }) => {
         </div>
       </div>
 
-      {/* Модальное окно */}
       {selectedImage && (
         <div
           className="modal fade show"
@@ -143,10 +142,11 @@ const CarInfo = ({ props }) => {
                 ></button>
               </div>
               <div className="modal-body text-center">
-                <img
+                <CarImage
                   src={selectedImage}
                   alt="Preview"
                   className="img-fluid"
+                  fallbackKey={`${props.name} ${props.type}`}
                 />
               </div>
             </div>

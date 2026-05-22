@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import CarImage from './CarImage';
 
 const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }) => {
     const navigate = useNavigate();
@@ -36,7 +37,7 @@ const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }
                 </div>
             </div>
             <div className="car-img-container px-4">
-                <img src={imgSrc} className="car-img" alt={name} />
+                <CarImage src={imgSrc} className="car-img" alt={name} fallbackKey={`${name} ${type}`} />
             </div>
             <div className="row car-info mt-2">
                 <div className="col-4 car-info-item">
