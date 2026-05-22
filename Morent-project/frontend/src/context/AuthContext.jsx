@@ -3,15 +3,25 @@ import { bankApi } from '../api/bankApi';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:1488';
 const AUTH_USER_KEY = 'morent_auth_user';
+const PENDING_VERIFY_EMAIL_KEY = 'morent_pending_verify_email';
 const storage = window.sessionStorage;
+
+const isEmailNotVerifiedError = (message) => {
+    const text = (message || '').toLowerCase();
+    return text.includes('email is not verified')
+        || text.includes('подтвердите email');
+};
 
 export const AuthContext = createContext({
     user: null,
     isAuthenticated: false,
+    pendingVerificationEmail: null,
     favorites: [],
     favoritesLoading: false,
     register: async () => {},
     login: async () => {},
+    verifyEmail: async () => {},
+    resendVerificationEmail: async () => {},
     logout: () => {},
     refreshFavorites: async () => {},
     addFavorite: async () => {},
@@ -21,8 +31,8 @@ export const AuthContext = createContext({
     authRequest: async () => {},
 });
 
-const persistState = (user) => {
-    if (user) {
+const persistUser = (user) => {
+    if (user?.emailVerified) {
         storage.setItem(AUTH_USER_KEY, JSON.stringify(user));
     } else {
         storage.removeItem(AUTH_USER_KEY);
@@ -61,19 +71,40 @@ const normalizeFavorites = (data) => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         const stored = storage.getItem(AUTH_USER_KEY);
-        return stored ? JSON.parse(stored) : null;
+        if (!stored) return null;
+        try {
+            const parsed = JSON.parse(stored);
+            return parsed?.emailVerified ? parsed : null;
+        } catch {
+            return null;
+        }
     });
+    const [pendingVerificationEmail, setPendingVerificationEmail] = useState(
+        () => storage.getItem(PENDING_VERIFY_EMAIL_KEY) || null,
+    );
     const [favorites, setFavorites] = useState([]);
     const [favoritesLoading, setFavoritesLoading] = useState(false);
 
-    useEffect(() => {
-        persistState(user);
-    }, [user]);
+    const setPendingEmail = useCallback((email) => {
+        const normalized = email ? String(email).trim().toLowerCase() : '';
+        if (normalized) {
+            storage.setItem(PENDING_VERIFY_EMAIL_KEY, normalized);
+            setPendingVerificationEmail(normalized);
+        } else {
+            storage.removeItem(PENDING_VERIFY_EMAIL_KEY);
+            setPendingVerificationEmail(null);
+        }
+    }, []);
 
     const clearAuthState = useCallback(() => {
         setUser(null);
         setFavorites([]);
+        storage.removeItem(AUTH_USER_KEY);
     }, []);
+
+    useEffect(() => {
+        persistUser(user);
+    }, [user]);
 
     const sendRequest = useCallback(async (path, payload) => {
         const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -106,6 +137,7 @@ export const AuthProvider = ({ children }) => {
             const message = await parseError(response);
             if (response.status === 401) {
                 clearAuthState();
+                setPendingEmail(null);
             }
             throw new Error(message);
         }
@@ -114,10 +146,10 @@ export const AuthProvider = ({ children }) => {
         }
         const text = await response.text();
         return text ? JSON.parse(text) : null;
-    }, [clearAuthState]);
+    }, [clearAuthState, setPendingEmail]);
 
     const loadFavorites = useCallback(async () => {
-        if (!user) {
+        if (!user?.emailVerified) {
             setFavorites([]);
             return;
         }
@@ -135,23 +167,42 @@ export const AuthProvider = ({ children }) => {
 
     const register = useCallback(async ({ name, email, password }) => {
         try {
+            clearAuthState();
+            setPendingEmail(null);
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            }).catch(() => {});
+
             const data = await sendRequest('/auth/register', { name, email, password });
-            setUser(data.user);
-            setFavorites([]);
-            try {
-                await bankApi.syncSession();
-            } catch (bankErr) {
-                console.warn('Bank card provisioning failed', bankErr);
-            }
-            return { success: true, message: 'Registration successful' };
+            const normalizedEmail = (data.user?.email || email || '').trim().toLowerCase();
+            setPendingEmail(normalizedEmail);
+            return {
+                success: true,
+                message: 'Проверьте почту и введите код подтверждения',
+                requiresEmailVerification: Boolean(data.requiresEmailVerification ?? true),
+            };
         } catch (error) {
             return { success: false, message: error.message };
         }
-    }, [sendRequest]);
+    }, [sendRequest, clearAuthState, setPendingEmail]);
 
     const login = useCallback(async ({ email, password }) => {
         try {
             const data = await sendRequest('/auth/login', { email, password });
+            const normalizedEmail = (data.user?.email || email || '').trim().toLowerCase();
+
+            if (data.requiresEmailVerification) {
+                clearAuthState();
+                setPendingEmail(normalizedEmail);
+                return {
+                    success: true,
+                    requiresEmailVerification: true,
+                    message: 'Аккаунт не подтверждён. Введите код из письма — мы отправили его снова.',
+                };
+            }
+
+            setPendingEmail(null);
             setUser(data.user);
             await loadFavorites();
             try {
@@ -161,9 +212,18 @@ export const AuthProvider = ({ children }) => {
             }
             return { success: true, message: 'Welcome back!' };
         } catch (error) {
+            if (isEmailNotVerifiedError(error.message)) {
+                clearAuthState();
+                setPendingEmail(email);
+                return {
+                    success: true,
+                    requiresEmailVerification: true,
+                    message: 'Подтвердите email — введите код из письма',
+                };
+            }
             return { success: false, message: error.message };
         }
-    }, [sendRequest, loadFavorites]);
+    }, [sendRequest, loadFavorites, clearAuthState, setPendingEmail]);
 
     const logout = useCallback(async () => {
         try {
@@ -180,9 +240,17 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = useCallback(async () => {
         const data = await authRequest('/auth/profile');
-        setUser(data);
+        if (data?.emailVerified) {
+            setUser(data);
+            setPendingEmail(null);
+        } else {
+            clearAuthState();
+            if (data?.email) {
+                setPendingEmail(data.email);
+            }
+        }
         return data;
-    }, [authRequest]);
+    }, [authRequest, clearAuthState, setPendingEmail]);
 
     const updateProfile = useCallback(async (payload) => {
         const data = await authRequest('/auth/profile', {
@@ -192,6 +260,39 @@ export const AuthProvider = ({ children }) => {
         setUser(data);
         return data;
     }, [authRequest]);
+
+    const verifyEmail = useCallback(async (code) => {
+        const email = pendingVerificationEmail || storage.getItem(PENDING_VERIFY_EMAIL_KEY);
+        if (!email) {
+            return { success: false, message: 'Сначала зарегистрируйтесь или войдите' };
+        }
+        try {
+            const data = await sendRequest('/auth/verify-email', { email, code });
+            setPendingEmail(null);
+            setUser(data.user);
+            try {
+                await bankApi.syncSession();
+            } catch (bankErr) {
+                console.warn('Bank card provisioning failed', bankErr);
+            }
+            return { success: true, message: 'Email подтверждён' };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }, [sendRequest, pendingVerificationEmail, setPendingEmail]);
+
+    const resendVerificationEmail = useCallback(async () => {
+        const email = pendingVerificationEmail || storage.getItem(PENDING_VERIFY_EMAIL_KEY);
+        if (!email) {
+            return { success: false, message: 'Укажите email при регистрации' };
+        }
+        try {
+            await sendRequest('/auth/verify-email/resend', { email });
+            return { success: true, message: 'Код отправлен повторно' };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }, [sendRequest, pendingVerificationEmail]);
 
     const changePassword = useCallback(async ({ oldPassword, newPassword }) => {
         await authRequest('/auth/password', {
@@ -228,7 +329,7 @@ export const AuthProvider = ({ children }) => {
     }, [favorites]);
 
     const toggleFavorite = useCallback(async (carId) => {
-        if (!user) {
+        if (!user?.emailVerified) {
             throw new Error('Not authenticated');
         }
         if (isFavorite(carId)) {
@@ -239,10 +340,9 @@ export const AuthProvider = ({ children }) => {
     }, [user, isFavorite, addFavorite, removeFavorite]);
 
     useEffect(() => {
-        if (user) {
+        if (user?.emailVerified) {
             loadFavorites();
-            // Если роль отсутствует, обновляем профиль для получения актуальных данных
-            if (user && !user.role && !user.Role) {
+            if (!user.role && !user.Role) {
                 fetchProfile().catch(console.error);
             }
         } else {
@@ -258,11 +358,14 @@ export const AuthProvider = ({ children }) => {
 
     const value = useMemo(() => ({
         user,
+        pendingVerificationEmail,
         favorites,
         favoritesLoading,
-        isAuthenticated: Boolean(user),
+        isAuthenticated: Boolean(user?.emailVerified),
         register,
         login,
+        verifyEmail,
+        resendVerificationEmail,
         logout,
         refreshFavorites: loadFavorites,
         addFavorite,
@@ -273,8 +376,26 @@ export const AuthProvider = ({ children }) => {
         fetchProfile,
         updateProfile,
         changePassword,
-    }), [user, favorites, favoritesLoading, register, login, logout, loadFavorites, addFavorite, removeFavorite, toggleFavorite, isFavorite, authRequest, fetchProfile, updateProfile, changePassword]);
+    }), [
+        user,
+        pendingVerificationEmail,
+        favorites,
+        favoritesLoading,
+        register,
+        login,
+        verifyEmail,
+        resendVerificationEmail,
+        logout,
+        loadFavorites,
+        addFavorite,
+        removeFavorite,
+        toggleFavorite,
+        isFavorite,
+        authRequest,
+        fetchProfile,
+        updateProfile,
+        changePassword,
+    ]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

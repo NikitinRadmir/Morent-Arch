@@ -1,4 +1,4 @@
-﻿<subject>🚗 Напоминание: бронь #{{ BookingId }} начинается завтра</subject>
+﻿<subject>🚗 Напоминание: бронь #{{ rental_id }} — аренда сегодня</subject>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -103,19 +103,19 @@
         </div>
 
         <div class="content">
-            <p class="greeting">Здравствуйте, {{ CustomerName }}!</p>
+            <p class="greeting">Здравствуйте, {{ user_name }}!</p>
 
-            <p class="instruction">Ваша аренда автомобиля начинается <strong>завтра</strong>.</p>
+            <p class="instruction">Ваша аренда автомобиля начинается <strong>сегодня</strong>.</p>
 
             <div class="details">
-                <p><strong>Номер брони:</strong> {{ BookingId }}</p>
-                <p><strong>Автомобиль:</strong> {{ CarModel }}</p>
-                <p><strong>Начало:</strong> {{ StartDate }}</p>
-                <p><strong>Место выдачи:</strong> {{ PickupLocation }}</p>
+                <p><strong>Номер брони:</strong> {{ rental_id }}</p>
+                <p><strong>Автомобиль:</strong> {{ car_name }}</p>
+                <p><strong>Начало:</strong> {{ start_date }}</p>
+                <p><strong>Место выдачи:</strong> {{ pickup_location }}</p>
             </div>
 
             <p style="text-align: center;">
-                <a href="{{ ContractLink }}" class="button">📄 Открыть договор</a>
+                <a href="{{ contract_link }}" class="button">📄 Открыть договор</a>
             </p>
 
             <p class="instruction"><strong>Что взять с собой:</strong></p>

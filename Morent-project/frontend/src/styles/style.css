@@ -1243,6 +1243,45 @@ i.fa-regular.fa-heart {
   font-weight: 600;
 }
 
+.auth-link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #3563E9;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.auth-link-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-code-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 8px 0 4px;
+}
+
+.verify-code-input {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  font-family: monospace;
+}
+
+.verify-code-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+}
+
 .password-input-wrap {
   position: relative;
   flex: 1;

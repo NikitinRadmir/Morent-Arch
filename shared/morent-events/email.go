@@ -7,6 +7,7 @@ const (
 
 	EmailTemplateBookingConfirmation = "booking_confirmation"
 	EmailTemplateWelcomeRegistered   = "welcome_registered"
+	EmailTemplateEmailVerification   = "email_verification"
 	EmailTemplateLoginNotification   = "login_notification"
 	EmailTemplatePaymentFailed       = "payment_failed"
 	EmailTemplateReminder24h         = "reminder_24h"

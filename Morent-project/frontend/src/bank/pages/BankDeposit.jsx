@@ -46,7 +46,7 @@ const BankDeposit = () => {
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="form-label mb-form-label" htmlFor="deposit-amount">
-                Сумма, ₽
+                Сумма, $
               </label>
               <input
                 type="number"

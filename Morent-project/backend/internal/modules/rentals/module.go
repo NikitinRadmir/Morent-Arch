@@ -21,10 +21,11 @@ func NewModule(
 	cfg *config.Config,
 	rentalRepo *repository.RentalRepository,
 	carRepo *repository.CarRepository,
+	userRepo *repository.UserRepository,
 	emailNotifier *service.EmailNotifier,
 	bankService *service.BankService,
 ) Outputs {
-	rentalService := service.NewRentalService(rentalRepo, carRepo, emailNotifier, bankService)
+	rentalService := service.NewRentalService(rentalRepo, carRepo, userRepo, emailNotifier, bankService)
 	rentalHandler := handlers.NewRentalHandler(authService, rentalService, logService, cfg)
 
 	return Outputs{

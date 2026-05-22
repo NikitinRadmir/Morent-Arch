@@ -40,13 +40,14 @@ func RunMigrations(db *gorm.DB) error {
 		}
 
 		admin := models.User{
-			Name:         "Admin",
-			Email:        adminEmail,
-			PasswordHash: string(hash),
-			AvatarURL:    "https://avatars.mds.yandex.net/i?id=18025267d7d94e6289d82fda9b36eea0_l-5256838-images-thumbs&n=13",
-			Nickname:     "Admin",
-			Position:     "Administrator",
-			Role:         "admin",
+			Name:          "Admin",
+			Email:         adminEmail,
+			PasswordHash:  string(hash),
+			AvatarURL:     "https://avatars.mds.yandex.net/i?id=18025267d7d94e6289d82fda9b36eea0_l-5256838-images-thumbs&n=13",
+			Nickname:      "Admin",
+			Position:      "Administrator",
+			Role:          "admin",
+			EmailVerified: true,
 		}
 
 		if errCreate := db.Create(&admin).Error; errCreate != nil {

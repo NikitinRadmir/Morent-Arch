@@ -15,19 +15,41 @@ import (
 )
 
 type EmailNotifier struct {
-	users  *repository.UserRepository
-	emails messaging.EmailEventPublisher
-	log    *slog.Logger
+	users          *repository.UserRepository
+	emails         messaging.EmailEventPublisher
+	frontendOrigin string
+	log            *slog.Logger
 }
 
-func NewEmailNotifier(users *repository.UserRepository, emails messaging.EmailEventPublisher, log *slog.Logger) *EmailNotifier {
+func NewEmailNotifier(
+	users *repository.UserRepository,
+	emails messaging.EmailEventPublisher,
+	frontendOrigin string,
+	log *slog.Logger,
+) *EmailNotifier {
 	if emails == nil {
 		emails = messaging.EmailNoopPublisher{}
 	}
 	if log == nil {
 		log = slog.Default()
 	}
-	return &EmailNotifier{users: users, emails: emails, log: log}
+	origin := strings.TrimRight(strings.TrimSpace(frontendOrigin), "/")
+	if origin == "" {
+		origin = "http://localhost:5173"
+	}
+	return &EmailNotifier{users: users, emails: emails, frontendOrigin: origin, log: log}
+}
+
+func (n *EmailNotifier) NotifyEmailVerification(user *models.User, code string) {
+	if user == nil || !n.emails.Enabled() || strings.TrimSpace(code) == "" {
+		return
+	}
+	link := n.frontendOrigin + "/verify-email"
+	n.publishAsync(user.Email, morentevents.EmailTemplateEmailVerification, map[string]string{
+		"user_name":          user.Name,
+		"verification_code":  code,
+		"verification_link": link,
+	})
 }
 
 func (n *EmailNotifier) NotifyWelcomeRegistered(user *models.User) {
@@ -91,4 +113,22 @@ func (n *EmailNotifier) NotifyBookingConfirmation(userID uint, rental *models.Re
 			"rental_id":   strconv.FormatUint(uint64(rental.ID), 10),
 		})
 	}()
+}
+
+func (n *EmailNotifier) NotifyRentalDayReminder(user *models.User, rental *models.Rental) {
+	if user == nil || rental == nil || !n.emails.Enabled() {
+		return
+	}
+	carName := strings.TrimSpace(rental.Car.Name)
+	if carName == "" {
+		carName = fmt.Sprintf("авто #%d", rental.Car.ID)
+	}
+	n.publishAsync(user.Email, morentevents.EmailTemplateReminder24h, map[string]string{
+		"user_name":       user.Name,
+		"rental_id":       strconv.FormatUint(uint64(rental.ID), 10),
+		"car_name":        carName,
+		"start_date":      rental.StartDate.Format("2006-01-02 15:04"),
+		"pickup_location": "Пункт выдачи Morent",
+		"contract_link":   n.frontendOrigin + "/rentals",
+	})
 }

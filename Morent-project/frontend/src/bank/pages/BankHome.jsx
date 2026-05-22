@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import BankHeader from '../components/BankHeader';
 import BankVirtualCard from '../components/BankVirtualCard';
 import { useBank } from '../context/BankContext';
+import { formatUsd } from '../../utils/formatMoney';
 
 const offers = [
   {
@@ -22,16 +23,6 @@ const offers = [
   },
 ];
 
-const formatMoney = (value) => {
-  if (value == null || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  return new Intl.NumberFormat('ru-RU', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value));
-};
-
 const BankHome = () => {
   const { profile, isAuthenticated, loading } = useBank();
 
@@ -42,8 +33,7 @@ const BankHome = () => {
         <section className="mb-hero-balance text-center text-md-start">
           <p className="mb-hero-balance-label mb-0">Доступно на счёте</p>
           <p className="mb-hero-balance-value mb-0">
-            {loading ? '…' : formatMoney(profile?.balance)}
-            <span className="mb-hero-balance-currency">₽</span>
+            {loading ? '…' : formatUsd(profile?.balance)}
           </p>
         </section>
 

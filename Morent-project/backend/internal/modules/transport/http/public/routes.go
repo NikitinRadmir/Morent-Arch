@@ -45,6 +45,8 @@ func Register(mux *http.ServeMux, container *di.Container) {
 			{Method: http.MethodGet, Path: "/profile", Handler: container.AuthHandler.Profile},
 			{Method: http.MethodPut, Path: "/profile", Handler: container.AuthHandler.UpdateProfile},
 			{Method: http.MethodPut, Path: "/password", Handler: container.AuthHandler.ChangePassword},
+			{Method: http.MethodPost, Path: "/verify-email", Handler: container.AuthHandler.VerifyEmail},
+			{Method: http.MethodPost, Path: "/verify-email/resend", Handler: container.AuthHandler.ResendVerificationEmail},
 		}},
 		{Prefix: "/Auth", Routes: []server.Route{
 			{Method: http.MethodPost, Path: "/Register", Handler: container.AuthHandler.Register},

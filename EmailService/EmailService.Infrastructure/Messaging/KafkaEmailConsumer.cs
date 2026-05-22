@@ -109,16 +109,6 @@ public sealed class KafkaEmailConsumer : BackgroundService
             return;
         }
 
-        if (request.TemplateKey != MorentEvents.TemplateWelcomeRegistered)
-        {
-            _logger.LogDebug(
-                "Skipping template {TemplateKey} (only {Allowed} for now)",
-                request.TemplateKey,
-                MorentEvents.TemplateWelcomeRegistered);
-            _consumer!.Commit(result);
-            return;
-        }
-
         _logger.LogInformation(
             "Processing email from Kafka: correlationId={CorrelationId}, template={TemplateKey}, to={To}",
             request.CorrelationId,

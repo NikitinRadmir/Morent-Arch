@@ -64,7 +64,7 @@ const BankTransfer = () => {
             </div>
             <div className="mb-3">
               <label className="form-label mb-form-label" htmlFor="transfer-amount">
-                Сумма к списанию, ₽
+                Сумма к списанию, $
               </label>
               <input
                 type="number"

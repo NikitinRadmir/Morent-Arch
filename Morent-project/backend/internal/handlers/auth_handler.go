@@ -38,7 +38,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, errRegister := h.service.Register(req.Name, req.Email, req.Password)
+	user, _, errRegister := h.service.Register(req.Name, req.Email, req.Password)
 	if errRegister != nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
@@ -64,14 +64,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		ObjectID: nil,
 	})
 
-	response := authdto.AuthResponse{
-		Token: token,
-		User:  *user,
-	}
-	h.setSessionCookie(w, token)
+	h.clearSessionCookie(w)
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(authdto.AuthResponse{
+		User:                      *user,
+		RequiresEmailVerification: !user.EmailVerified,
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +85,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, errLogin := h.service.Login(req.Email, req.Password)
+	user, token, pendingVerify, errLogin := h.service.Login(req.Email, req.Password)
 	if errLogin != nil {
 		_ = h.logService.LogEvent(ctx, service.LogEvent{
 			Time:    time.Now(),
@@ -99,9 +98,30 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(errLogin, service.ErrInvalidCredentials) {
 			status = http.StatusUnauthorized
 		}
+		h.clearSessionCookie(w)
 		http.Error(w, errLogin.Error(), status)
 		return
 	}
+
+	h.clearSessionCookie(w)
+
+	if pendingVerify {
+		_ = h.logService.LogEvent(ctx, service.LogEvent{
+			Time:    time.Now(),
+			Type:    service.LogAuth,
+			Action:  "login",
+			UserID:  user.ID,
+			Result:  "pending_verification",
+			Message: "login blocked until email verified",
+		})
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(authdto.AuthResponse{
+			User:                      *user,
+			RequiresEmailVerification: true,
+		})
+		return
+	}
+
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
 		Time:    time.Now(),
 		Type:    service.LogAuth,
@@ -111,14 +131,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Message: "user logged in",
 	})
 
-	response := authdto.AuthResponse{
-		Token: token,
-		User:  *user,
-	}
 	h.setSessionCookie(w, token)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(authdto.AuthResponse{
+		Token: token,
+		User:  *user,
+	})
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -320,6 +339,68 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Action: "change_password",
 		UserID: user.ID,
 		Result: "success",
+	})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req authdto.VerifyEmailRequest
+	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if err := authValidator.Struct(req); err != nil {
+		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	updated, token, errVerify := h.service.VerifyEmail(req.Email, req.Code)
+	if errVerify != nil {
+		status := http.StatusBadRequest
+		http.Error(w, errVerify.Error(), status)
+		return
+	}
+
+	h.setSessionCookie(w, token)
+
+	_ = h.logService.LogEvent(ctx, service.LogEvent{
+		Time:    time.Now(),
+		Type:    service.LogAuth,
+		Action:  "verify_email",
+		UserID:  updated.ID,
+		Result:  "success",
+		Message: "email verified",
+	})
+	json.NewEncoder(w).Encode(authdto.AuthResponse{
+		Token: token,
+		User:  *updated,
+	})
+}
+
+func (h *AuthHandler) ResendVerificationEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req authdto.ResendVerificationRequest
+	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if err := authValidator.Struct(req); err != nil {
+		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if errResend := h.service.ResendVerificationEmail(req.Email); errResend != nil {
+		http.Error(w, errResend.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = h.logService.LogEvent(ctx, service.LogEvent{
+		Time:    time.Now(),
+		Type:    service.LogAuth,
+		Action:  "resend_verification",
+		Result:  "success",
+		Message: "verification email resent",
 	})
 	w.WriteHeader(http.StatusNoContent)
 }

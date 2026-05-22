@@ -26,14 +26,22 @@ type RentalCarRepository interface {
 type RentalService struct {
 	rentalRepo RentalRepository
 	carRepo    RentalCarRepository
+	userRepo   RentalUserRepository
 	emails     *EmailNotifier
 	bank       *BankService
 }
 
-func NewRentalService(rentalRepo RentalRepository, carRepo RentalCarRepository, emails *EmailNotifier, bank *BankService) *RentalService {
+func NewRentalService(
+	rentalRepo RentalRepository,
+	carRepo RentalCarRepository,
+	userRepo RentalUserRepository,
+	emails *EmailNotifier,
+	bank *BankService,
+) *RentalService {
 	return &RentalService{
 		rentalRepo: rentalRepo,
 		carRepo:    carRepo,
+		userRepo:   userRepo,
 		emails:     emails,
 		bank:       bank,
 	}
@@ -48,11 +56,25 @@ var (
 	ErrInsufficientBankBalance = errors.New("insufficient funds on bank account")
 )
 
+type RentalUserRepository interface {
+	GetByID(id uint) (*models.User, error)
+}
+
 func rentalPeriodOverlaps(existing models.Rental, start, end time.Time) bool {
 	return start.Before(existing.EndDate) && end.After(existing.StartDate)
 }
 
 func (s *RentalService) CreateRental(userID, carID uint, startDate, endDate time.Time, clientTotalPrice float64, bankToken string) (*models.RentalResponse, error) {
+	if s.userRepo != nil {
+		user, err := s.userRepo.GetByID(userID)
+		if err != nil {
+			return nil, err
+		}
+		if user == nil || !user.EmailVerified {
+			return nil, ErrEmailNotVerified
+		}
+	}
+
 	if strings.TrimSpace(bankToken) == "" {
 		return nil, ErrBankSessionRequired
 	}

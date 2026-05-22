@@ -12,8 +12,9 @@ type Rental struct {
 	CarID      uint      `gorm:"not null"`
 	StartDate  time.Time `gorm:"not null"`
 	EndDate    time.Time `gorm:"not null"`
-	TotalPrice float64   `gorm:"type:numeric(10,2);not null"`
-	Car        Car       `gorm:"constraint:OnDelete:CASCADE"`
+	TotalPrice              float64   `gorm:"type:numeric(10,2);not null"`
+	RentalDayReminderSent   bool      `gorm:"not null;default:false"`
+	Car                     Car       `gorm:"constraint:OnDelete:CASCADE"`
 }
 
 type RentalResponse struct {

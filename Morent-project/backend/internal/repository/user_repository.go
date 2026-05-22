@@ -78,6 +78,10 @@ func (r *UserRepository) Update(user *models.User) error {
 	return nil
 }
 
+func (r *UserRepository) Save(user *models.User) error {
+	return r.db.Save(user).Error
+}
+
 func (r *UserRepository) Delete(id uint64) error {
 	// Полное удаление: иначе uniqueIndex на email блокирует повторную регистрацию.
 	return r.db.Unscoped().Delete(&models.User{}, id).Error

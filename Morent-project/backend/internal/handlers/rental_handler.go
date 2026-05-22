@@ -169,6 +169,8 @@ func rentalErrorStatus(err error) (int, string) {
 		return http.StatusBadRequest, "сумма аренды не совпадает с расчётом на сервере"
 	case errors.Is(err, service.ErrCarAlreadyBooked):
 		return http.StatusConflict, "автомобиль уже забронирован на выбранные даты"
+	case errors.Is(err, service.ErrEmailNotVerified):
+		return http.StatusForbidden, "подтвердите email перед бронированием"
 	case errors.Is(err, service.ErrBankSessionRequired):
 		return http.StatusUnauthorized, "для оплаты откройте Morent Bank и войдите в аккаунт"
 	case errors.Is(err, service.ErrBankUnavailable):

@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	ErrUserExists         = errors.New("user with this email already exists")
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrUserExists                = errors.New("user with this email already exists")
+	ErrInvalidCredentials        = errors.New("invalid email or password")
+	ErrInvalidToken              = errors.New("invalid or expired token")
+	ErrEmailNotVerified          = errors.New("email is not verified")
+	ErrInvalidVerificationCode   = errors.New("invalid verification code")
+	ErrVerificationCodeExpired   = errors.New("verification code expired")
 )
 
 type AuthService struct {
@@ -36,6 +39,7 @@ type AuthUserRepository interface {
 	Create(user *models.User) error
 	GetByID(id uint) (*models.User, error)
 	Update(user *models.User) error
+	Save(user *models.User) error
 }
 
 type AuthSessionRepository interface {
@@ -121,35 +125,57 @@ func (s *AuthService) Register(name, email, password string) (*models.UserRespon
 		}
 	}
 
-	s.publishRegistered(user)
-	if s.emails != nil {
-		s.emails.NotifyWelcomeRegistered(&user)
+	if err := s.issueVerificationCode(&user); err != nil {
+		return nil, "", err
 	}
+
+	s.publishRegistered(user)
 
 	resp := user.ToResponse()
-	token, errSession := s.createSession(user.ID)
-	if errSession != nil {
-		return nil, "", errSession
-	}
-	return &resp, token, nil
+	return &resp, "", nil
 }
 
-func (s *AuthService) Login(email, password string) (*models.UserResponse, string, error) {
+func (s *AuthService) issueVerificationCode(user *models.User) error {
+	code, expiresAt, errCode := generateEmailVerificationCode()
+	if errCode != nil {
+		return errCode
+	}
+	user.EmailVerified = false
+	user.EmailVerificationCode = code
+	user.EmailVerificationExpiresAt = &expiresAt
+	if err := s.userRepo.Save(user); err != nil {
+		return err
+	}
+	if s.emails != nil {
+		s.emails.NotifyEmailVerification(user, code)
+	}
+	return nil
+}
+
+func (s *AuthService) Login(email, password string) (*models.UserResponse, string, bool, error) {
 	if strings.TrimSpace(email) == "" || strings.TrimSpace(password) == "" {
-		return nil, "", errors.New("email and password are required")
+		return nil, "", false, errors.New("email and password are required")
 	}
 
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	user, err := s.userRepo.GetByEmail(normalizedEmail)
 	if err != nil {
-		return nil, "", err
+		return nil, "", false, err
 	}
 	if user == nil {
-		return nil, "", ErrInvalidCredentials
+		return nil, "", false, ErrInvalidCredentials
 	}
 
 	if errCompare := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); errCompare != nil {
-		return nil, "", ErrInvalidCredentials
+		return nil, "", false, ErrInvalidCredentials
+	}
+
+	if !user.EmailVerified {
+		if err := s.issueVerificationCode(user); err != nil {
+			return nil, "", false, err
+		}
+		resp := user.ToResponse()
+		return &resp, "", true, nil
 	}
 
 	if s.emails != nil {
@@ -159,9 +185,77 @@ func (s *AuthService) Login(email, password string) (*models.UserResponse, strin
 	resp := user.ToResponse()
 	token, errSession := s.createSession(user.ID)
 	if errSession != nil {
+		return nil, "", false, errSession
+	}
+	return &resp, token, false, nil
+}
+
+func (s *AuthService) VerifyEmail(email, code string) (*models.UserResponse, string, error) {
+	code = strings.TrimSpace(code)
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" || len(code) != 6 {
+		return nil, "", ErrInvalidVerificationCode
+	}
+
+	user, err := s.userRepo.GetByEmail(email)
+	if err != nil {
+		return nil, "", err
+	}
+	if user == nil {
+		return nil, "", ErrInvalidVerificationCode
+	}
+	if user.EmailVerified {
+		resp := user.ToResponse()
+		token, errSession := s.createSession(user.ID)
+		if errSession != nil {
+			return nil, "", errSession
+		}
+		return &resp, token, nil
+	}
+	if user.EmailVerificationCode != code {
+		return nil, "", ErrInvalidVerificationCode
+	}
+	if user.EmailVerificationExpiresAt == nil || time.Now().UTC().After(*user.EmailVerificationExpiresAt) {
+		return nil, "", ErrVerificationCodeExpired
+	}
+
+	user.EmailVerified = true
+	user.EmailVerificationCode = ""
+	user.EmailVerificationExpiresAt = nil
+	if err := s.userRepo.Save(user); err != nil {
+		return nil, "", err
+	}
+
+	if s.emails != nil {
+		s.emails.NotifyWelcomeRegistered(user)
+	}
+
+	token, errSession := s.createSession(user.ID)
+	if errSession != nil {
 		return nil, "", errSession
 	}
+	resp := user.ToResponse()
 	return &resp, token, nil
+}
+
+func (s *AuthService) ResendVerificationEmail(email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return errors.New("email is required")
+	}
+
+	user, err := s.userRepo.GetByEmail(email)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return nil
+	}
+	if user.EmailVerified {
+		return nil
+	}
+
+	return s.issueVerificationCode(user)
 }
 
 func (s *AuthService) Logout(token string) error {
@@ -249,7 +343,11 @@ func (s *AuthService) GetUserByToken(token string) (*models.User, error) {
 	if session == nil {
 		return nil, ErrInvalidToken
 	}
-	return &session.User, nil
+	user := session.User
+	if !user.EmailVerified {
+		return nil, ErrEmailNotVerified
+	}
+	return &user, nil
 }
 
 func defaultAvatarURL() string {

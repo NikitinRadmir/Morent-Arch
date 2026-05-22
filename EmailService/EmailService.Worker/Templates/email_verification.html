@@ -114,7 +114,7 @@
         </div>
 
         <div class="content">
-            <p class="greeting">Здравствуйте, {{ CustomerName }}!</p>
+            <p class="greeting">Здравствуйте, {{ user_name }}!</p>
 
             <p class="instruction">
                 Спасибо за регистрацию в Morent. Чтобы завершить создание аккаунта,
@@ -126,27 +126,13 @@
             </p>
 
             <div class="code-box">
-                <div class="verification-code">{{ VerificationCode }}</div>
+                <div class="verification-code">{{ verification_code }}</div>
             </div>
-
-            <p style="text-align: center;">
-                <a href="{{ VerificationLink }}" class="button">
-                    ✅ Подтвердить email
-                </a>
-            </p>
 
             <div class="security-note">
                 🔒 <strong>Важно:</strong> Никому не сообщайте этот код.
                 Если вы не регистрировались в Morent, просто проигнорируйте это письмо.
             </div>
-
-            <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                <strong>Альтернативный способ:</strong><br>
-                Если кнопка выше не работает, скопируйте и вставьте эту ссылку в браузер:<br>
-                <a href="{{ VerificationLink }}" style="word-break: break-all; color: #667eea;">
-                    {{ VerificationLink }}
-                </a>
-            </p>
         </div>
 
         <div class="footer">
@@ -155,11 +141,11 @@
                 Аренда премиальных автомобилей
             </p>
             <p>
-                <a href="https://autorental.com/support" style="color: #667eea; text-decoration: none;">
+                <a href="#" style="color: #667eea; text-decoration: none;">
                     Служба поддержки
                 </a>
                 •
-                <a href="https://autorental.com/privacy" style="color: #667eea; text-decoration: none;">
+                <a href="#" style="color: #667eea; text-decoration: none;">
                     Политика конфиденциальности
                 </a>
             </p>

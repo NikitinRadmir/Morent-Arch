@@ -8,6 +8,7 @@ import CarDetail from './pages/CarDetail';
 import PayPage from './pages/PayPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import VerifyEmail from './pages/VerifyEmail';
 import Favorites from './pages/Favorites';
 import Rentals from './pages/Rentals';
 import Settings from './pages/Settings';
@@ -43,6 +44,7 @@ const App = () => {
           <Route path="rent/:id" element={<PayPage />} />
           <Route path="sign-in" element={<SignIn />} />
           <Route path="sign-up" element={<SignUp />} />
+          <Route path="verify-email" element={<VerifyEmail />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="rentals" element={<Rentals />} />
           <Route path="settings" element={<Settings />} />

@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { bankApi } from '../api/bankApi';
+import { formatUsd } from '../utils/formatMoney';
 
 const PayForm = ({ car, setTotalAmount }) => {
     const { isAuthenticated, authRequest, user } = useContext(AuthContext);
@@ -244,15 +245,6 @@ const PayForm = ({ car, setTotalAmount }) => {
     const billingName = user?.nickname || user?.name || '—';
     const billingEmail = user?.email || '—';
 
-    const formatMoney = (value) => {
-        if (value == null || Number.isNaN(Number(value))) {
-            return '—';
-        }
-        return new Intl.NumberFormat('ru-RU', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(Number(value));
-    };
 
     const mapRentalError = (message) => {
         const text = (message || '').toLowerCase();
@@ -490,11 +482,11 @@ const PayForm = ({ car, setTotalAmount }) => {
                                             <div className="col-12 mb-3">
                                                 <h6>Баланс счёта</h6>
                                                 <p className={`pay-readonly-field mb-0 ${Number(bankProfile.balance) < Number(localTotalAmount) ? 'pay-balance--low' : ''}`}>
-                                                    {formatMoney(bankProfile.balance)} ₽
+                                                    {formatUsd(bankProfile.balance)}
                                                     {Number(localTotalAmount) > 0 && (
                                                         <span className="pay-balance-hint">
                                                             {' '}
-                                                            (к оплате: {formatMoney(localTotalAmount)} ₽)
+                                                            (к оплате: {formatUsd(localTotalAmount)})
                                                         </span>
                                                     )}
                                                 </p>

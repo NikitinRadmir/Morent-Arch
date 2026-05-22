@@ -93,3 +93,23 @@ func (r *RentalRepository) HasRental(userID, carID uint) (bool, error) {
 func (r *RentalRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Rental{}, id).Error
 }
+
+// ListStartingTodayWithoutReminder — аренды, у которых дата начала сегодня и напоминание ещё не отправлено.
+func (r *RentalRepository) ListStartingTodayWithoutReminder(now time.Time) ([]models.Rental, error) {
+	loc := now.Location()
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	dayEnd := dayStart.Add(24 * time.Hour)
+
+	var rentals []models.Rental
+	err := r.db.Preload("Car").
+		Where("start_date >= ? AND start_date < ?", dayStart, dayEnd).
+		Where("rental_day_reminder_sent = ?", false).
+		Find(&rentals).Error
+	return rentals, err
+}
+
+func (r *RentalRepository) MarkRentalDayReminderSent(id uint) error {
+	return r.db.Model(&models.Rental{}).
+		Where("id = ?", id).
+		Update("rental_day_reminder_sent", true).Error
+}

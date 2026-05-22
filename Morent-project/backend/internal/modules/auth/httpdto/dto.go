@@ -14,8 +14,9 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	Token string              `json:"token"`
-	User  models.UserResponse `json:"user"`
+	Token                     string              `json:"token,omitempty"`
+	User                      models.UserResponse `json:"user"`
+	RequiresEmailVerification bool                `json:"requiresEmailVerification,omitempty"`
 }
 
 type ProfileUpdateRequest struct {
@@ -28,4 +29,13 @@ type ProfileUpdateRequest struct {
 type PasswordChangeRequest struct {
 	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`
+}
+
+type VerifyEmailRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Code  string `json:"code" validate:"required,len=6"`
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email"`
 }

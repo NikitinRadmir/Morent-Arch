@@ -24,6 +24,10 @@ const SignIn = () => {
         setLoading(false);
 
         if (result.success) {
+            if (result.requiresEmailVerification) {
+                navigate('/verify-email', { replace: true });
+                return;
+            }
             setStatus({ type: 'success', message: result.message });
             navigate(redirectTo);
         } else {

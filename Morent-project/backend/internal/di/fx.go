@@ -55,7 +55,7 @@ var Module = fx.Options(
 		provideGeneratorClient,
 		provideUserEventPublisher,
 		provideEmailEventPublisher,
-		service.NewEmailNotifier,
+		provideEmailNotifier,
 		provideBankGateway,
 		handlers.NewPasswordHandler,
 		buildContainer,
@@ -64,6 +64,7 @@ var Module = fx.Options(
 	fx.Invoke(registerRedisHook),
 	fx.Invoke(registerKafkaHook),
 	fx.Invoke(registerBankKafkaHook),
+	fx.Invoke(registerRentalReminderHook),
 )
 
 func provideCarCache(cfg *config.Config, rdb *redis.Client) *cache.CarCache {
@@ -105,6 +106,15 @@ func provideUserEventPublisher(cfg *config.Config, log *slog.Logger) messaging.U
 	return pub
 }
 
+func provideEmailNotifier(
+	cfg *config.Config,
+	users *repository.UserRepository,
+	emails messaging.EmailEventPublisher,
+	log *slog.Logger,
+) *service.EmailNotifier {
+	return service.NewEmailNotifier(users, emails, cfg.FrontendOrigin, log)
+}
+
 func provideEmailEventPublisher(cfg *config.Config, log *slog.Logger) messaging.EmailEventPublisher {
 	if !cfg.KafkaEnabled {
 		return messaging.EmailNoopPublisher{}
@@ -134,6 +144,28 @@ func provideBankGateway(cfg *config.Config, log *slog.Logger) messaging.BankGate
 		return messaging.BankNoopGateway{}
 	}
 	return gw
+}
+
+func registerRentalReminderHook(
+	lc fx.Lifecycle,
+	rentals *repository.RentalRepository,
+	users *repository.UserRepository,
+	emails *service.EmailNotifier,
+	log *slog.Logger,
+) {
+	scheduler := service.NewRentalReminderScheduler(rentals, users, emails, log)
+	ctx, cancel := context.WithCancel(context.Background())
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go scheduler.Run(ctx)
+			log.Info("rental day reminder scheduler started")
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			cancel()
+			return nil
+		},
+	})
 }
 
 func registerBankKafkaHook(lc fx.Lifecycle, cfg *config.Config, gw messaging.BankGateway, log *slog.Logger) {
