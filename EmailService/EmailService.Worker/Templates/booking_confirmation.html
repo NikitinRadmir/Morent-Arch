@@ -1,0 +1,93 @@
+﻿<subject>Подтверждение брони #{{BookingId}}</subject>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        .details {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Morent</h1>
+        </div>
+
+        <div class="content">
+            <h2>Здравствуйте, {{CustomerName}}!</h2>
+
+            <p>Ваша заявка на бронирование автомобиля успешно принята.</p>
+
+            <div class="details">
+                <h3>📋 Детали бронирования</h3>
+                <p><strong>Номер брони:</strong> {{BookingId}}</p>
+                <p><strong>Автомобиль:</strong> {{CarModel}}</p>
+                <p><strong>Период аренды:</strong> {{StartDate}} — {{EndDate}}</p>
+                <p><strong>Место выдачи:</strong> {{PickupLocation}}</p>
+            </div>
+
+            <p style="text-align: center;">
+                <a href="{{ContractLink}}" class="button">📄 Смотреть договор</a>
+            </p>
+
+            <p><strong>Что дальше?</strong></p>
+            <ul>
+                <li>Проверьте договор по ссылке выше</li>
+                <li>Подготовьте водительское удостоверение</li>
+                <li>Прибудьте в пункт выдачи за 15 минут до назначенного времени</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>Если вы не оформляли бронь, просто проигнорируйте это письмо.</p>
+            <p>© 2024 Morent. Все права защищены.</p>
+        </div>
+    </div>
+</body>
+</html>

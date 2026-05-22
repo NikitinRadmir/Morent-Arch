@@ -3,8 +3,14 @@ using FluentValidation;
 
 namespace EmailService.Api.Validators;
 
+/// <summary>
+/// Validator for <see cref="EmailRequest"/>.
+/// </summary>
 public class EmailRequestValidator : AbstractValidator<EmailRequest>
 {
+    /// <summary>
+    /// Initializes validation rules for <see cref="EmailRequest"/>.
+    /// </summary>
     public EmailRequestValidator()
     {
         RuleFor(x => x.CorrelationId)
@@ -17,7 +23,8 @@ public class EmailRequestValidator : AbstractValidator<EmailRequest>
 
         RuleFor(x => x.TemplateKey)
             .NotEmpty().WithMessage("TemplateKey is required")
-            .Matches(@"^[a-z0-9_\-]+$").WithMessage("TemplateKey must be lowercase alphanumeric with underscores/hyphens");
+            .Matches(@"^[a-z0-9_\-]+$")
+            .WithMessage("TemplateKey must be lowercase alphanumeric with underscores/hyphens");
 
         RuleFor(x => x.Variables)
             .NotNull().WithMessage("Variables dictionary cannot be null");
