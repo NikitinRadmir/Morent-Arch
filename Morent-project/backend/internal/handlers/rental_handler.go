@@ -182,6 +182,6 @@ func rentalErrorStatus(err error) (int, string) {
 	case errors.Is(err, service.ErrBankInvalidAmount):
 		return http.StatusBadRequest, "некорректная сумма оплаты"
 	default:
-		return http.StatusInternalServerError, err.Error()
+		return http.StatusInternalServerError, "не удалось выполнить операцию с арендой"
 	}
 }

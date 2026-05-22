@@ -13,7 +13,7 @@ services:
       timeout: 2s
       retries: 30
     ports:
-        - "${DB_EXTERNAL_PORT:-5435}:5432"
+        - "${DB_EXTERNAL_PORT:-5436}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 

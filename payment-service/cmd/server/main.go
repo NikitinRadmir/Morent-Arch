@@ -14,6 +14,8 @@ import (
 	"morent-arch/payment-service/internal/config"
 	"morent-arch/payment-service/internal/handlers"
 	"morent-arch/payment-service/internal/messaging"
+
+	"obslog"
 )
 
 func main() {
@@ -26,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.NewRouter(deps.Payment)
+	handler := handlers.NewRouter(deps.Payment, deps.DB)
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,
@@ -85,6 +87,12 @@ func configureLogger(cfg config.Config) {
 	default:
 		level.Set(slog.LevelInfo)
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	logger := obslog.New("payment-service", obslog.LogTypeApp)
 	slog.SetDefault(logger)
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		for range ticker.C {
+			obslog.Heartbeat(logger, "process", "alive")
+		}
+	}()
 }

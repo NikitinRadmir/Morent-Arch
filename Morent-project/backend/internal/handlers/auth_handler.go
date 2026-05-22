@@ -47,11 +47,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: errRegister.Error(),
 		})
-		status := http.StatusInternalServerError
-		if errors.Is(errRegister, service.ErrUserExists) {
-			status = http.StatusBadRequest
+		if ae, ok := common.MapServiceError(errRegister); ok {
+			common.WriteAPIError(w, ae)
+			return
 		}
-		http.Error(w, errRegister.Error(), status)
+		common.WriteInternalErrorJSON(w, "не удалось зарегистрироваться")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -94,12 +94,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: errLogin.Error(),
 		})
-		status := http.StatusInternalServerError
-		if errors.Is(errLogin, service.ErrInvalidCredentials) {
-			status = http.StatusUnauthorized
-		}
 		h.clearSessionCookie(w)
-		http.Error(w, errLogin.Error(), status)
+		if ae, ok := common.MapServiceError(errLogin); ok {
+			common.WriteAPIError(w, ae)
+			return
+		}
+		common.WriteInternalErrorJSON(w, "не удалось войти")
 		return
 	}
 

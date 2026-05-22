@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -14,17 +15,22 @@ import (
 	"time"
 
 	"morent-arch/payment-service/internal/domain"
+	"morent-arch/payment-service/internal/health"
 	"morent-arch/payment-service/internal/observability"
 	"morent-arch/payment-service/internal/repository"
 	"morent-arch/payment-service/internal/service"
+
+	"gorm.io/gorm"
+	"obslog"
 )
 
 type Handler struct {
 	pay *service.PaymentService
+	db  *gorm.DB
 }
 
-func NewRouter(pay *service.PaymentService) http.Handler {
-	h := &Handler{pay: pay}
+func NewRouter(pay *service.PaymentService, db *gorm.DB) http.Handler {
+	h := &Handler{pay: pay, db: db}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", h.health)
@@ -43,6 +49,16 @@ func NewRouter(pay *service.PaymentService) http.Handler {
 
 func withMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				slog.Error("http panic recovered",
+					"log_type", obslog.LogTypeApp,
+					"panic", rec,
+					"path", r.URL.Path,
+				)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			}
+		}()
 		start := time.Now()
 		requestID := r.Header.Get("X-Request-ID")
 		if strings.TrimSpace(requestID) == "" {
@@ -78,6 +94,7 @@ func withMiddleware(next http.Handler) http.Handler {
 			level = slog.LevelWarn
 		}
 		slog.Log(r.Context(), level, "http_request",
+			"log_type", obslog.LogTypeHTTP,
 			"request_id", requestID,
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -101,11 +118,18 @@ func (r *statusRecorder) WriteHeader(status int) {
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "payment-service"})
 }
 
-func (h *Handler) ready(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
+	if h.db == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "storage": "memory"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), health.CheckTimeout)
+	defer cancel()
+	report := health.CheckPostgres(ctx, h.db)
+	writeJSON(w, report.HTTPStatus(), report)
 }
 
 func (h *Handler) accounts(w http.ResponseWriter, r *http.Request) {

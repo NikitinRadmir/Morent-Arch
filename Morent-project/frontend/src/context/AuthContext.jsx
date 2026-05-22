@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { bankApi } from '../api/bankApi';
+import { resilientFetch } from '../utils/apiClient';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:1488';
 const AUTH_USER_KEY = 'morent_auth_user';
@@ -107,45 +108,38 @@ export const AuthProvider = ({ children }) => {
     }, [user]);
 
     const sendRequest = useCallback(async (path, payload) => {
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await resilientFetch(`${API_BASE_URL}${path}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify(payload),
         });
-        if (!response.ok) {
-            const message = await parseError(response);
-            throw new Error(message);
-        }
-
         return response.json();
     }, []);
 
     const authRequest = useCallback(async (path, options = {}) => {
-        const response = await fetch(`${API_BASE_URL}${path}`, {
-            method: options.method || 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options.headers || {}),
-            },
-            credentials: 'include',
-            body: options.body,
-        });
-        if (!response.ok) {
-            const message = await parseError(response);
-            if (response.status === 401) {
+        try {
+            const response = await resilientFetch(`${API_BASE_URL}${path}`, {
+                method: options.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {}),
+                },
+                body: options.body,
+            });
+            if (response.status === 204) {
+                return null;
+            }
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        } catch (err) {
+            if (err.status === 401) {
                 clearAuthState();
                 setPendingEmail(null);
             }
-            throw new Error(message);
+            throw err;
         }
-        if (response.status === 204) {
-            return null;
-        }
-        const text = await response.text();
-        return text ? JSON.parse(text) : null;
     }, [clearAuthState, setPendingEmail]);
 
     const loadFavorites = useCallback(async () => {

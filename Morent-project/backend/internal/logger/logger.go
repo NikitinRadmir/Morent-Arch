@@ -2,14 +2,11 @@ package logger
 
 import (
 	"log/slog"
-	"os"
+
+	"obslog"
 )
 
-// New создаёт JSON-логгер для stdout (структурированные логи).
+// New создаёт JSON-логгер для stdout (поля service, log_type для Elasticsearch).
 func New() *slog.Logger {
-	h := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.LevelInfo,
-		AddSource: true,
-	})
-	return slog.New(h)
+	return obslog.New("morent-backend", obslog.LogTypeApp)
 }

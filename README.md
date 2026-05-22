@@ -37,14 +37,18 @@
 | MinIO | Медиа, логи | `9000` / консоль `9001` |
 | Redis | Кэш каталога | `6379` |
 | payment-service | REST + Kafka bank consumer | `8081` |
-| payment-service PostgreSQL | Счета, карты, переводы, платежи | `5434` |
+| payment-service PostgreSQL | Счета, карты, переводы, платежи | `5438` |
 | car-aggregator | REST API | `8080` |
-| user-system | Auth / RBAC REST | из `.env` |
+| car-aggregator PostgreSQL | Офферы | `5436` |
+| user-system | Auth / RBAC REST | `8082` |
+| user-system PostgreSQL | RBAC | `5434` |
 | EmailService API | Ingestion, webhooks | `5112` |
 | EmailService PostgreSQL | Логи статусов писем (`EmailLogs`) | `5435` |
 | generator-service | Password / QR API | `8080` |
 | Kafka | Брокер событий | `9092` |
 | Kafka UI | Просмотр топиков | `8090` |
+| Elasticsearch | Централизованные логи | `9200` |
+| Kibana | UI логов / heartbeat | `5601` |
 
 Точные значения задаются в `.env` / `docker-compose` каждого сервиса.
 
@@ -59,6 +63,35 @@
 | **car-aggregator** | PostgreSQL | Офферы и метаданные поиска |
 
 Шаблоны писем — файлы в `EmailService/EmailService.Worker/Templates/`.
+
+## Observability (Elasticsearch)
+
+Централизованные логи и heartbeat всех сервисов:
+
+```bash
+make obs-up    # Elasticsearch :9200, Kibana :5601, Filebeat, Heartbeat
+```
+
+- Логи индексируются по шаблону `morent-logs-{service}-{log.type}-YYYY.MM.DD`
+- Heartbeat пишет в `morent-heartbeat-*`
+- Go-сервисы: JSON с полями `service`, `log_type` (`app`, `http`, `heartbeat`)
+- Docker-метки: `co.elastic.logs/service`, `co.elastic.logs/log_type`
+
+Подробнее: [`infra/observability/README.md`](infra/observability/README.md)
+
+### Отказоустойчивость (кратко)
+
+| Компонент | Поведение при сбое |
+|-----------|-------------------|
+| Morent Bank (Kafka → payment) | HTTP **503**, код `bank_unavailable` |
+| Агрегатор (admin import) | **503** / **502** без утечки SQL |
+| Generator (пароли) | **503** |
+| Email (Kafka) | Warn в логах, регистрация/аренда не откатывается |
+| Morent `/ready` | **503**, если недоступны Postgres или Redis |
+| payment `/ready` | **503**, если недоступна БД |
+| Frontend | `resilientFetch` — понятные сообщения при 5xx и обрыве сети |
+
+Безопасные **500**: публичные JSON-ошибки без `err.Error()` в auth и rental.
 
 ## Kafka и общие контракты
 
@@ -184,7 +217,7 @@ sequenceDiagram
 | car-aggregator | Go, GORM, PostgreSQL |
 | generator-service | Go |
 | Интеграции | Kafka, REST, gRPC; внешние API CarAPI, DaData |
-| Инфра | Docker Compose, общий Makefile в корне |
+| Инфра | Docker Compose, Makefile (`make up`, `make obs-up`), Elasticsearch + Filebeat + Heartbeat |
 
 ## Статус
 

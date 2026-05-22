@@ -116,6 +116,16 @@ services:
       - morent-kafka
     ports:
       - "${BACKEND_PORT:-1488}:1488"
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/service: "morent-backend"
+      co.elastic.logs/log_type: "app"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:1488/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   frontend:
     build:

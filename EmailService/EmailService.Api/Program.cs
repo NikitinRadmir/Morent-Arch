@@ -24,6 +24,8 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.WithProcessName()
     .Enrich.WithEnvironmentName()
     .Enrich.WithProperty("Application", "EmailService.Api")
+    .Enrich.WithProperty("service", "emailservice-api")
+    .Enrich.WithProperty("log_type", "app")
 
     .WriteTo.Console(
         outputTemplate:

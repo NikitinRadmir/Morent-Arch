@@ -1,0 +1,85 @@
+# Elasticsearch + Kibana + Filebeat + Heartbeat
+# Запуск из корня: make obs-up
+# Kibana: http://localhost:5601
+# Elasticsearch: http://localhost:9200
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: morent-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "${ELASTIC_PORT:-9200}:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - morent-obs
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: morent-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - morent-obs
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.0
+    container_name: morent-filebeat
+    user: root
+    command: filebeat -e -strict.perms=false
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - morent-obs
+      - kafka_morent-kafka
+      - default
+
+  heartbeat:
+    image: docker.elastic.co/beats/heartbeat:8.15.0
+    container_name: morent-heartbeat
+    user: root
+    command: heartbeat -e -strict.perms=false
+    volumes:
+      - ./heartbeat.yml:/usr/share/heartbeat/heartbeat.yml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - morent-obs
+      - kafka_morent-kafka
+      - default
+
+volumes:
+  es_data:
+
+networks:
+  morent-obs:
+    name: morent-obs
+  kafka_morent-kafka:
+    external: true
+    name: kafka_morent-kafka

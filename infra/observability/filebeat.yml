@@ -1,0 +1,52 @@
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition:
+            equals:
+              docker.container.labels.co.elastic.logs/enabled: "true"
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              processors:
+                - add_docker_metadata: ~
+                - decode_json_fields:
+                    fields: ["message"]
+                    target: ""
+                    overwrite_keys: true
+                    add_error_key: true
+                - rename:
+                    fields:
+                      - {from: "log_type", to: "log.type"}
+                    ignore_missing: true
+                    fail_on_error: false
+                - add_fields:
+                    target: ""
+                    fields:
+                      service.name: ${data.docker.container.labels.co.elastic.logs/service}
+                      log.type: ${data.docker.container.labels.co.elastic.logs/log_type}
+
+processors:
+  - add_host_metadata: ~
+  - drop_event:
+      when:
+        or:
+          - contains:
+              message: "GET /health"
+          - contains:
+              message: "\"path\":\"/health\""
+
+setup.ilm.enabled: false
+setup.template.name: "morent-logs"
+setup.template.pattern: "morent-logs-*"
+setup.template.settings:
+  index.number_of_shards: 1
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "morent-logs-%{[service.name]:unknown}-%{[log.type]:app}-%{+yyyy.MM.dd}"
+
+logging.level: info
+logging.to_files: false

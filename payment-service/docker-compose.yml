@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-payment}
       POSTGRES_DB: ${POSTGRES_DB:-payment}
     ports:
-      - "${PAYMENT_DB_PORT:-5434}:5432"
+      - "${PAYMENT_DB_PORT:-5438}:5432"
     volumes:
       - payment_pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,6 +14,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - default
+
     restart: unless-stopped
 
   payment-service:
@@ -37,7 +40,12 @@ services:
       KAFKA_TOPIC_BANK_RESPONSES: ${KAFKA_TOPIC_BANK_RESPONSES:-morent.bank.responses}
       KAFKA_GROUP_PAYMENT_BANK: ${KAFKA_GROUP_PAYMENT_BANK:-payment-service-bank}
     networks:
+      - default
       - morent-kafka
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/service: "payment-service"
+      co.elastic.logs/log_type: "app"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
@@ -49,6 +57,8 @@ volumes:
   payment_pg_data:
 
 networks:
+  default:
+    name: payment-service_default
   morent-kafka:
     external: true
     name: kafka_morent-kafka

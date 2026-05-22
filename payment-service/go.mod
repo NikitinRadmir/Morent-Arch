@@ -4,6 +4,8 @@ go 1.23
 
 replace morent-events => ../shared/morent-events
 
+replace obslog => ../shared/obslog
+
 require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
@@ -12,6 +14,7 @@ require (
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.0
 	morent-events v0.0.0
+	obslog v0.0.0
 )
 
 require (

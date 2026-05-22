@@ -4,6 +4,8 @@ go 1.24.0
 
 replace morent-events => ../../shared/morent-events
 
+replace obslog => ../../shared/obslog
+
 require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
@@ -20,6 +22,7 @@ require (
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
 	morent-events v0.0.0
+	obslog v0.0.0
 )
 
 require (

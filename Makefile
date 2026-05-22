@@ -8,6 +8,8 @@ ROOT_DIR       := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 KAFKA_FILE     := $(ROOT_DIR)/infra/kafka/docker-compose.yml
 KAFKA_PROJECT  := kafka
+OBS_FILE       := $(ROOT_DIR)/infra/observability/docker-compose.yml
+OBS_PROJECT    := morent-obs
 
 MORENT_DIR     := $(ROOT_DIR)/Morent-project
 USER_DIR       := $(ROOT_DIR)/user-system-develop
@@ -21,7 +23,20 @@ EMAILTEST_DIR  := $(ROOT_DIR)/emailtest
 
 # --- Kafka (инфра, общая сеть morent-kafka → kafka_morent-kafka) ---
 
-.PHONY: kafka-up kafka-down kafka-logs kafka-ps kafka-build
+.PHONY: kafka-up kafka-down kafka-logs kafka-ps kafka-build \
+	obs-up obs-down obs-logs obs-ps
+
+obs-up:
+	$(DOCKER) -f $(OBS_FILE) -p $(OBS_PROJECT) up -d
+
+obs-down:
+	$(DOCKER) -f $(OBS_FILE) -p $(OBS_PROJECT) down
+
+obs-logs:
+	$(DOCKER) -f $(OBS_FILE) -p $(OBS_PROJECT) logs -f
+
+obs-ps:
+	$(DOCKER) -f $(OBS_FILE) -p $(OBS_PROJECT) ps
 
 kafka-up:
 	$(DOCKER) -f $(KAFKA_FILE) -p $(KAFKA_PROJECT) up -d
@@ -156,6 +171,7 @@ up: kafka-up user-up morent-up email-up aggregator-up payment-up generator-up
 	@echo ""
 	@echo "Стек поднят."
 	@echo "  Kafka UI:     http://localhost:8090"
+	@echo "  Kibana:       http://localhost:5601  (после make obs-up)"
 	@echo "  Morent UI:    http://localhost:$${FRONTEND_PORT:-5173}"
 	@echo "  Morent API:   http://localhost:$${BACKEND_PORT:-1488}"
 	@echo "  Email API:    http://localhost:$${EMAIL_API_PORT:-5112}"
@@ -206,6 +222,9 @@ help:
 	@echo ""
 	@echo "Kafka (infra/kafka):"
 	@echo "  make kafka-up / kafka-down / kafka-logs / kafka-ps"
+	@echo ""
+	@echo "Observability (Elasticsearch, Kibana, Filebeat, Heartbeat):"
+	@echo "  make obs-up / obs-down / obs-logs / obs-ps"
 	@echo ""
 	@echo "Отдельные сервисы (примеры):"
 	@echo "  make morent-up      make user-up"

@@ -1,0 +1,69 @@
+heartbeat.monitors:
+  - type: http
+    id: morent-backend-health
+    name: morent-backend
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:1488/health"]
+    check.response.status: [200]
+    fields:
+      service.name: morent-backend
+      log.type: heartbeat
+
+  - type: http
+    id: morent-backend-ready
+    name: morent-backend-ready
+    schedule: "@every 60s"
+    hosts: ["http://host.docker.internal:1488/ready"]
+    check.response.status: [200, 503]
+    fields:
+      service.name: morent-backend
+      log.type: heartbeat
+
+  - type: http
+    id: payment-service-health
+    name: payment-service
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:8081/health"]
+    check.response.status: [200]
+
+  - type: http
+    id: payment-service-ready
+    name: payment-service-ready
+    schedule: "@every 60s"
+    hosts: ["http://host.docker.internal:8081/ready"]
+    check.response.status: [200, 503]
+
+  - type: http
+    id: emailservice-api-health
+    name: emailservice-api
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:5112/health"]
+    check.response.status: [200]
+
+  - type: http
+    id: car-aggregator-health
+    name: car-aggregator
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:8080/health"]
+    check.response.status: [200]
+
+  - type: http
+    id: generator-service-health
+    name: generator-service
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:8080/health"]
+    check.response.status: [200]
+
+setup.ilm.enabled: false
+setup.template.name: "morent-heartbeat"
+setup.template.pattern: "morent-heartbeat-*"
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "morent-heartbeat-%{[monitor.id]}-%{+yyyy.MM.dd}"
+
+processors:
+  - add_fields:
+      target: ""
+      fields:
+        log.type: heartbeat
