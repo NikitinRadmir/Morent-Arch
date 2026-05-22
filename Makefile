@@ -158,7 +158,7 @@ up: kafka-up user-up morent-up email-up aggregator-up payment-up generator-up
 	@echo "  Kafka UI:     http://localhost:8090"
 	@echo "  Morent UI:    http://localhost:$${FRONTEND_PORT:-5173}"
 	@echo "  Morent API:   http://localhost:$${BACKEND_PORT:-1488}"
-	@echo "  Email API:    http://localhost:$${EMAIL_API_PORT:-8084}"
+	@echo "  Email API:    http://localhost:$${EMAIL_API_PORT:-5112}"
 
 down: generator-down payment-down aggregator-down email-down morent-down user-down kafka-down
 

@@ -7,7 +7,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type clientRecord struct {
+// ClientRecord — данные клиента Morent Bank (карта привязана к счёту в payment-service).
+type ClientRecord struct {
 	AccountID    string
 	Phone        string
 	DisplayName  string
@@ -23,20 +24,38 @@ type sessionRecord struct {
 	Token     string
 }
 
+// ClientRegistry — хранилище клиентов и сессий банка.
+type ClientRegistry interface {
+	HasPhone(phone string) bool
+	HasCardNumber(number string) bool
+	RegisterClient(phone, displayName, passwordHash, accountID, cardNumber, expDate, cvv, cardHolder string)
+	VerifyLogin(phone, password string) (*ClientRecord, bool)
+	CreateSession(token, accountID string)
+	DeleteSession(token string)
+	AccountByToken(token string) (string, bool)
+	ClientByPhone(phone string) (*ClientRecord, bool)
+	ClientByCardNumber(number string) (*ClientRecord, bool)
+	ClientByAccountID(accountID string) (*ClientRecord, bool)
+	EnsureClientCard(phone string, registeredAt time.Time) bool
+}
+
+// Registry — in-memory реализация (тесты и STORAGE=memory).
 type Registry struct {
 	mu       sync.RWMutex
-	clients  map[string]*clientRecord // phone -> client
-	cards    map[string]string        // cardNumber -> phone
-	sessions map[string]*sessionRecord // token -> session
+	clients  map[string]*ClientRecord
+	cards    map[string]string
+	sessions map[string]*sessionRecord
 }
 
 func NewRegistry() *Registry {
 	return &Registry{
-		clients:  make(map[string]*clientRecord),
+		clients:  make(map[string]*ClientRecord),
 		cards:    make(map[string]string),
 		sessions: make(map[string]*sessionRecord),
 	}
 }
+
+var _ ClientRegistry = (*Registry)(nil)
 
 func (r *Registry) HasPhone(phone string) bool {
 	r.mu.RLock()
@@ -55,7 +74,7 @@ func (r *Registry) HasCardNumber(number string) bool {
 func (r *Registry) RegisterClient(phone, displayName, passwordHash, accountID, cardNumber, expDate, cvv, cardHolder string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.clients[phone] = &clientRecord{
+	r.clients[phone] = &ClientRecord{
 		AccountID:    accountID,
 		Phone:        phone,
 		DisplayName:  displayName,
@@ -70,7 +89,7 @@ func (r *Registry) RegisterClient(phone, displayName, passwordHash, accountID, c
 	}
 }
 
-func (r *Registry) VerifyLogin(phone, password string) (*clientRecord, bool) {
+func (r *Registry) VerifyLogin(phone, password string) (*ClientRecord, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	c, ok := r.clients[phone]
@@ -105,7 +124,7 @@ func (r *Registry) AccountByToken(token string) (string, bool) {
 	return s.AccountID, true
 }
 
-func (r *Registry) ClientByPhone(phone string) (*clientRecord, bool) {
+func (r *Registry) ClientByPhone(phone string) (*ClientRecord, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	c, ok := r.clients[phone]
@@ -115,7 +134,7 @@ func (r *Registry) ClientByPhone(phone string) (*clientRecord, bool) {
 	return c, true
 }
 
-func (r *Registry) ClientByCardNumber(number string) (*clientRecord, bool) {
+func (r *Registry) ClientByCardNumber(number string) (*ClientRecord, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	phone, ok := r.cards[number]
@@ -129,7 +148,7 @@ func (r *Registry) ClientByCardNumber(number string) (*clientRecord, bool) {
 	return c, true
 }
 
-func (r *Registry) ClientByAccountID(accountID string) (*clientRecord, bool) {
+func (r *Registry) ClientByAccountID(accountID string) (*ClientRecord, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, c := range r.clients {
@@ -140,7 +159,6 @@ func (r *Registry) ClientByAccountID(accountID string) (*clientRecord, bool) {
 	return nil, false
 }
 
-// EnsureClientCard выпускает виртуальную карту, если у клиента её ещё нет.
 func (r *Registry) EnsureClientCard(phone string, registeredAt time.Time) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -2,110 +2,190 @@
 
 ![Morent Cover](docs/phot/photo_2026-05-06_19-28-19.jpg)
 
-Микросервисная экосистема для платформы аренды автомобилей: клиентский продукт Morent, сервисы аутентификации и ролей, агрегатор автопредложений, платежный контур, email-уведомления и утилитарный сервис генерации.
+Микросервисная платформа аренды автомобилей **Morent**: каталог и бронирование, Morent Bank (платежи), email-уведомления, RBAC пользователей, агрегатор автопредложений и вспомогательные сервисы. Сервисы связаны через общую шину **Kafka** и контракты в `shared/morent-events`.
 
 ## Состав репозитория
 
-- `Morent-project` — основной продукт (frontend + backend, admin, аренда, избранное, комментарии, медиа).
-- `car-aggregator-project` — поиск автомобилей через CarAPI + DaData, управление `offers`.
-- `user-system-develop` — управление пользователями, ролями, правами и компаниями (RBAC, JWT).
-- `payment-service` — счета, переводы, лимиты, идемпотентность, ledger и реверс операций.
-- `EmailService` — прием email-запросов, очередь, worker, статусы доставки и webhook.
-- `generator-service` — генерация паролей и QR-кодов через HTTP API.
-- `docs` — требования, use-cases, test-cases, C4 и материалы по продукту.
+| Путь | Назначение |
+| --- | --- |
+| [`Morent-project/`](Morent-project/) | Основной продукт: React-фронт, Go-backend (аренда, админка, медиа MinIO, избранное, комментарии), **Morent Bank** через Kafka → `payment-service` |
+| [`payment-service/`](payment-service/) | Счета, переводы по картам, оплата аренды, ledger, лимиты; **PostgreSQL** для счетов и клиентов банка |
+| [`EmailService/`](EmailService/) | Отправка писем (SMTP), Worker + Kafka consumer; **PostgreSQL** — журнал статусов доставки |
+| [`user-system-develop/`](user-system-develop/) | Пользователи, роли, права, компании (RBAC, JWT); синхронизация из Kafka `morent.users` |
+| [`car-aggregator-project/`](car-aggregator-project/) | Поиск авто (CarAPI, DaData), управление `offers` |
+| [`generator-service/`](generator-service/) | Генерация паролей и QR по HTTP |
+| [`shared/morent-events/`](shared/morent-events/) | Общие Go-контракты Kafka (email, bank, users) |
+| [`infra/kafka/`](infra/kafka/) | Kafka + Kafka UI для локальной разработки |
+| [`docs/`](docs/) | Требования, use-cases, test-cases, C4-диаграммы |
 
-## Ключевые сценарии
+Дополнительно: [`emailtest/`](emailtest/) — стенд для проверки EmailService.
 
-- Регистрация/вход пользователя и разграничение прав.
-- Поиск автомобилей, бронирование, отмена аренды.
-- Интеграция Morent с агрегатором для импорта авто.
-- Интеграция Morent с payment-service для оплаты аренды.
-- Интеграция Morent с EmailService для уведомлений.
-
-## C4 диаграммы
+## Архитектура (C4)
 
 ![C4 Level 1](docs/c4-diagrams/Morent-Arch-C4LVL1.svg)
 
 ![C4 Level 2](docs/c4-diagrams/Morent-Arch-C4LVL2.svg)
 
-## Витрина сервисов
+Исходник: [`docs/c4-diagrams/Morent-Arch-C4.drawio`](docs/c4-diagrams/Morent-Arch-C4.drawio)
 
-| Сервис | Назначение | Основные интерфейсы | Порт (типично) |
-| --- | --- | --- | --- |
-| `Morent-project/frontend` | Клиентское приложение | Web UI | `5173` (dev) |
-| `Morent-project/backend` | Каталог, аренда, админка, медиа | REST/GraphQL, gRPC bookings | `1488` (HTTP), `50051` (gRPC) |
-| `car-aggregator-project` | Поиск авто через CarAPI + DaData | `POST /search/trims`, offer endpoints | `8080` |
-| `user-system-develop` | Пользователи, роли, права, компании | Auth/RBAC REST + OpenAPI | из `.env` |
-| `payment-service` | Счета, переводы, лимиты, ledger | REST API платежей | из `.env` |
-| `EmailService` | Отправка email, очередь, webhook | Ingestion API, status API, webhook | из `appsettings/.env` |
-| `generator-service` | Генерация паролей и QR | `/api/v1/password`, `/api/v1/qrcode` | `8080` |
+## Витрина сервисов и порты (Docker / локально)
 
-> В монорепо порты конфигурируются через переменные окружения; значения выше — ориентиры для локальной разработки.
+| Сервис | Назначение | Типичный порт |
+| --- | --- | --- |
+| Morent frontend | Web UI | `5173` |
+| Morent PostgreSQL | Каталог, пользователи, аренды, сессии | `5433` |
+| MinIO | Медиа, логи | `9000` / консоль `9001` |
+| Redis | Кэш каталога | `6379` |
+| payment-service | REST + Kafka bank consumer | `8081` |
+| payment-service PostgreSQL | Счета, карты, переводы, платежи | `5434` |
+| car-aggregator | REST API | `8080` |
+| user-system | Auth / RBAC REST | из `.env` |
+| EmailService API | Ingestion, webhooks | `5112` |
+| EmailService PostgreSQL | Логи статусов писем (`EmailLogs`) | `5435` |
+| generator-service | Password / QR API | `8080` |
+| Kafka | Брокер событий | `9092` |
+| Kafka UI | Просмотр топиков | `8090` |
+
+Точные значения задаются в `.env` / `docker-compose` каждого сервиса.
+
+## Что хранится в БД
+
+| Сервис | СУБД | Содержимое |
+| --- | --- | --- |
+| **Morent** | PostgreSQL | Авто, аренды, пользователи (`emailVerified`, коды подтверждения), сессии, комментарии, избранное |
+| **payment-service** | PostgreSQL | Счета, баланс, клиенты банка (телефон, карта, CVV, exp), сессии, переводы (в т.ч. номера карт), платежи аренды, ledger |
+| **EmailService** | PostgreSQL | Только **статусы отправки** по `CorrelationId` (не текст писем и не шаблоны) |
+| **user-system** | PostgreSQL | Пользователи, роли, права, компании |
+| **car-aggregator** | PostgreSQL | Офферы и метаданные поиска |
+
+Шаблоны писем — файлы в `EmailService/EmailService.Worker/Templates/`.
+
+## Kafka и общие контракты
+
+Инфраструктура: `make kafka-up` → сеть `kafka_morent-kafka`.
+
+| Топик | Направление | Смысл |
+| --- | --- | --- |
+| `morent.emails` | Morent → EmailService Worker | Запрос на письмо (`email_verification`, `welcome_registered`, `booking_confirmation`, `reminder_24h`, …) |
+| `morent.bank.commands` / `morent.bank.responses` | Morent ↔ payment-service | Регистрация/вход в банк, перевод, оплата, профиль |
+| `morent.users` | Morent → user-system | События пользователей для синхронизации RBAC |
+
+Контракты: пакет [`shared/morent-events`](shared/morent-events/).
+
+## Ключевые сценарии
+
+- **Регистрация Morent** — без сессии до подтверждения email (6-значный код, `/verify-email`); письмо через Kafka → EmailService.
+- **Повторный вход без verify** — новый код и редирект на подтверждение.
+- **Аренда** — только для пользователей с `emailVerified`; письма о бронировании и напоминание в день аренды.
+- **Morent Bank** — виртуальные карты, перевод по номеру карты, оплата аренды; данные в PostgreSQL `payment-service`.
+- **Импорт авто** — админка Morent ↔ car-aggregator.
+- **RBAC** — user-system, опционально Kafka-sync пользователей.
 
 ## Быстрый старт
 
-### 1) Подготовка
+### Требования
 
-- Установить `Docker` и `Docker Compose`.
-- Для сервисов, где требуется, создать `.env` из `.env.example`.
+- Docker и Docker Compose
+- Для локального запуска без Docker: Go 1.23+, Node.js (фронт), .NET 8 (EmailService)
 
-### 2) Запуск сервисов
+### 1. Переменные окружения
 
-Запускай каждый сервис из его директории (или через общий сценарий, если используешь свой compose-оркестратор):
+Скопируйте `.env.example` → `.env` (где есть) в:
 
-- `Morent-project`
-- `car-aggregator-project`
-- `user-system-develop`
-- `payment-service`
-- `EmailService`
-- `generator-service`
+- `Morent-project/`
+- `user-system-develop/`
+- `car-aggregator-project/`
+- `payment-service/`
+- `EmailService/` (Api/Worker — см. README внутри сервиса)
 
-Минимальный рабочий контур для демо:
+Для Kafka из контейнеров часто нужен `KAFKA_BROKERS=kafka:9092` (в compose) или `host.docker.internal:9092` (с хоста).
 
-1. `Morent-project` (frontend + backend + db/minio)
-2. `car-aggregator-project`
-3. `payment-service`
-4. `EmailService`
+### 2. Весь стек из корня репозитория
 
-### 3) Проверка
+```bash
+make up      # Kafka → user-system → Morent → EmailService → aggregator → payment → generator
+make ps      # статус контейнеров
+make down    # остановить всё
+```
 
-- Убедиться, что сервисы отвечают на свои `health`/основные endpoints.
-- Проверить интеграционные сценарии из `docs/test-cases.md`.
+После `make up`:
 
-## Интеграционный flow (коротко)
+- Morent UI: http://localhost:5173  
+- Morent API: http://localhost:1488  
+- Kafka UI: http://localhost:8090  
+- EmailService API: http://localhost:5112  
 
-1. Пользователь авторизуется в Morent.
-2. В каталоге выбирает авто и создает аренду.
-3. При необходимости админ импортирует авто из агрегатора.
-4. Morent инициирует платеж через `payment-service`.
-5. После смены статуса аренды Morent отправляет событие в `EmailService`.
-6. Пользователь получает уведомление и видит актуальный статус в интерфейсе.
+Отдельные сервисы: `make morent-up`, `make payment-up`, `make email-up`, `make kafka-up` и т.д. — см. `make help`.
+
+### 3. Минимальный контур для демо
+
+1. `make kafka-up`
+2. `make morent-up`
+3. `make payment-up` (нужен для Morent Bank)
+4. `make email-up` (письма регистрации и аренды)
+
+Опционально: `user-system`, `car-aggregator`, `generator-service`.
+
+### 4. Проверка
+
+- Health/endpoints сервисов (Morent `1488`, payment `8081/health`, Email API).
+- Сценарии из [`docs/test-cases.md`](docs/test-cases.md).
+
+## Интеграционный flow
+
+```mermaid
+sequenceDiagram
+    participant U as Пользователь
+    participant M as Morent
+    participant P as payment-service
+    participant E as EmailService
+
+    U->>M: Регистрация / вход
+    M->>E: Kafka morent.emails (verify, welcome)
+    U->>M: Подтверждение email
+    U->>M: Бронирование авто
+    M->>P: Kafka bank.pay / REST
+    M->>E: booking_confirmation, reminder_24h
+    U->>M: Morent Bank — перевод по карте
+    M->>P: Kafka bank.transfer
+```
+
+1. Пользователь регистрируется в Morent → код на email (EmailService).
+2. После verify — полноценная сессия, доступ к аренде и банку.
+3. Оплата/банк — `payment-service` (PostgreSQL).
+4. Статусы аренды → события в `morent.emails` → Worker рендерит шаблон и отправляет.
+5. user-system при необходимости получает `morent.users`.
 
 ## Документация
 
-- Функциональные требования: `docs/functional-requirements.md`
-- Нефункциональные требования: `docs/non-functional-requirements.md`
-- Use Cases: `docs/use-cases.md`
-- Test Cases: `docs/test-cases.md`
-- Архитектура: `docs/c4-diagrams/Morent-Arch-C4.drawio`
-- Product Vision: `docs/PV/Morent-Product-Vision.pdf`
+- [Функциональные требования](docs/functional-requirements.md)
+- [Нефункциональные требования](docs/non-functional-requirements.md)
+- [Use Cases](docs/use-cases.md)
+- [Test Cases](docs/test-cases.md)
+- [Product Vision](docs/PV/Morent-Product-Vision.pdf)
 
-## Быстрые ссылки по API
+## README по сервисам
 
-- Morent backend: `Morent-project/README.md`
-- Car aggregator: `car-aggregator-project/README.md`
-- User system OpenAPI: `user-system-develop/docs`
-- Generator API примеры: `generator-service/README.md`
-- Payment examples: `payment-service/examples`
+- [Morent-project](Morent-project/README.md)
+- [car-aggregator-project](car-aggregator-project/README.md)
+- [user-system-develop](user-system-develop/README.md)
+- [generator-service](generator-service/README.md)
+- Примеры payment API: [`payment-service/examples/`](payment-service/examples/)
 
 ## Технологический стек
 
-- Backend: `Go`, `GORM`, `PostgreSQL`
-- Frontend: `React`, `Vite`
-- Интеграции: `REST`, `gRPC`, `RabbitMQ` (в user-system), внешние API (CarAPI, DaData)
-- Infra: `Docker`, `Docker Compose`, `MinIO`
-- Дополнительно: `.NET` (EmailService), Go-сервисы (aggregator/payment/generator)
+| Слой | Технологии |
+| --- | --- |
+| Morent backend | Go, Uber FX, GORM, PostgreSQL, Redis, MinIO, gRPC |
+| Morent frontend | React, Vite |
+| payment-service | Go, GORM, PostgreSQL, Kafka |
+| EmailService | .NET, EF Core, PostgreSQL, Kafka, RabbitMQ, SMTP/Resend |
+| user-system | Go, GORM, PostgreSQL, Kafka, JWT |
+| car-aggregator | Go, GORM, PostgreSQL |
+| generator-service | Go |
+| Интеграции | Kafka, REST, gRPC; внешние API CarAPI, DaData |
+| Инфра | Docker Compose, общий Makefile в корне |
 
 ## Статус
 
-Проект предназначен для учебной демонстрации микросервисной архитектуры с реальными интеграционными сценариями и разделением ответственности по сервисам.
+Учебно-демонстрационный монорепозиторий с рабочими интеграциями: Kafka между Morent, банком и почтой, персистентный payment-service, верификация email и transactional-письма. C4 и требования в `docs/` описывают целевую архитектуру; детали реализации — в README и коде каждого сервиса.

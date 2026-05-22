@@ -2,14 +2,13 @@ package messaging
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"morent-arch/payment-service/internal/bank"
 	"morent-arch/payment-service/internal/config"
-	"morent-arch/payment-service/internal/repository/memory"
-	"morent-arch/payment-service/internal/service"
 	morentevents "morent-events"
 
 	"github.com/segmentio/kafka-go"
@@ -22,14 +21,15 @@ type BankKafka struct {
 	log       *slog.Logger
 }
 
-func NewBankKafka(cfg config.Config, log *slog.Logger) (*BankKafka, error) {
+func NewBankKafka(cfg config.Config, processor *bank.Processor, log *slog.Logger) (*BankKafka, error) {
 	if log == nil {
 		log = slog.Default()
 	}
+	if processor == nil {
+		return nil, fmt.Errorf("bank processor is nil")
+	}
 	brokers := strings.Split(cfg.KafkaBrokers, ",")
-	store := memory.NewStore()
-	pay := service.NewPaymentService(store, store, store, store, store, store)
-	proc := bank.NewProcessor(pay, bank.NewRegistry())
+	proc := processor
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,

@@ -17,10 +17,10 @@ const currencyRUB = "RUB"
 
 type Processor struct {
 	pay      *service.PaymentService
-	registry *Registry
+	registry ClientRegistry
 }
 
-func NewProcessor(pay *service.PaymentService, registry *Registry) *Processor {
+func NewProcessor(pay *service.PaymentService, registry ClientRegistry) *Processor {
 	return &Processor{pay: pay, registry: registry}
 }
 
@@ -162,6 +162,16 @@ func (p *Processor) charge(ctx context.Context, cmd *morentevents.BankCommand) m
 	if err != nil {
 		return fail(resp, err, mapDomain(err))
 	}
+	_, _ = p.pay.RecordPayment(ctx, service.CreatePaymentInput{
+		ReferenceID:    cmd.RequestID,
+		AccountID:      accountID,
+		CardNumber:     client.CardNumber,
+		UserID:         client.Phone,
+		CarID:          "rental",
+		Amount:         amountMinor,
+		Currency:       currencyRUB,
+		IdempotencyKey: "bank-pay-" + cmd.RequestID,
+	})
 	profile, err := p.buildProfile(ctx, client)
 	if err != nil {
 		return fail(resp, err, "internal")
@@ -222,6 +232,8 @@ func (p *Processor) transfer(ctx context.Context, cmd *morentevents.BankCommand)
 	_, err = p.pay.Transfer(ctx, service.TransferInput{
 		FromAccountID:  fromID,
 		ToAccountID:    toClient.AccountID,
+		FromCardNumber: fromClient.CardNumber,
+		ToCardNumber:   recipientCard,
 		Amount:         amountMinor,
 		Fee:            0,
 		Currency:       currencyRUB,
@@ -277,7 +289,7 @@ func (p *Processor) transactions(ctx context.Context, cmd *morentevents.BankComm
 	return resp
 }
 
-func (p *Processor) sessionClient(token string) (string, *clientRecord, error) {
+func (p *Processor) sessionClient(token string) (string, *ClientRecord, error) {
 	if strings.TrimSpace(token) == "" {
 		return "", nil, errors.New("invalid or expired session")
 	}
@@ -292,7 +304,7 @@ func (p *Processor) sessionClient(token string) (string, *clientRecord, error) {
 	return accountID, client, nil
 }
 
-func (p *Processor) buildProfile(ctx context.Context, client *clientRecord) (*morentevents.BankProfile, error) {
+func (p *Processor) buildProfile(ctx context.Context, client *ClientRecord) (*morentevents.BankProfile, error) {
 	if client == nil {
 		return nil, errors.New("client not found")
 	}

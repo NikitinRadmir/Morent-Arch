@@ -16,7 +16,6 @@ import (
 	"morent-arch/payment-service/internal/domain"
 	"morent-arch/payment-service/internal/observability"
 	"morent-arch/payment-service/internal/repository"
-	"morent-arch/payment-service/internal/repository/memory"
 	"morent-arch/payment-service/internal/service"
 )
 
@@ -24,9 +23,8 @@ type Handler struct {
 	pay *service.PaymentService
 }
 
-func NewRouter() http.Handler {
-	store := memory.NewStore()
-	h := &Handler{pay: service.NewPaymentService(store, store, store, store, store, store)}
+func NewRouter(pay *service.PaymentService) http.Handler {
+	h := &Handler{pay: pay}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", h.health)

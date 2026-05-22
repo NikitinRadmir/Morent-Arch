@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"morent-arch/payment-service/internal/app"
 	"morent-arch/payment-service/internal/config"
 	"morent-arch/payment-service/internal/handlers"
 	"morent-arch/payment-service/internal/messaging"
@@ -19,7 +20,13 @@ func main() {
 	cfg := config.Load()
 	configureLogger(cfg)
 
-	handler := handlers.NewRouter()
+	deps, err := app.Bootstrap(cfg)
+	if err != nil {
+		slog.Error("bootstrap_failed", "error", err)
+		os.Exit(1)
+	}
+
+	handler := handlers.NewRouter(deps.Payment)
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,
@@ -31,7 +38,7 @@ func main() {
 
 	var bankKafka *messaging.BankKafka
 	if cfg.KafkaEnabled {
-		k, err := messaging.NewBankKafka(cfg, slog.Default())
+		k, err := messaging.NewBankKafka(cfg, deps.Processor, slog.Default())
 		if err != nil {
 			slog.Error("kafka_init_failed", "error", err)
 			os.Exit(1)

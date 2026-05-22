@@ -44,6 +44,8 @@ type CreateAccountInput struct {
 type TransferInput struct {
 	FromAccountID  string
 	ToAccountID    string
+	FromCardNumber string
+	ToCardNumber   string
 	Amount         domain.Money
 	Fee            domain.Money // комиссия (опционально, 0 = без комиссии)
 	Currency       string
@@ -58,6 +60,8 @@ type BalanceChangeInput struct {
 
 type CreatePaymentInput struct {
 	ReferenceID    string
+	AccountID      string
+	CardNumber     string
 	UserID         string
 	CarID          string
 	Amount         domain.Money
@@ -156,10 +160,30 @@ func (s *PaymentService) CreatePayment(ctx context.Context, in CreatePaymentInpu
 	if !domain.IsSupportedCurrency(currency) {
 		return nil, domain.ErrUnsupportedCurrency
 	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.recordPaymentLocked(ctx, in, referenceID, userID, carID, currency)
+}
 
+// RecordPayment сохраняет платёж без блокировки (после Withdraw/Transfer в том же потоке).
+func (s *PaymentService) RecordPayment(ctx context.Context, in CreatePaymentInput) (*domain.Payment, error) {
+	if in.Amount <= 0 {
+		return nil, domain.ErrInvalidAmount
+	}
+	referenceID := strings.TrimSpace(in.ReferenceID)
+	userID := strings.TrimSpace(in.UserID)
+	carID := strings.TrimSpace(in.CarID)
+	currency := strings.ToUpper(strings.TrimSpace(in.Currency))
+	if referenceID == "" || userID == "" || carID == "" {
+		return nil, domain.ErrInvalidPayment
+	}
+	if !domain.IsSupportedCurrency(currency) {
+		return nil, domain.ErrUnsupportedCurrency
+	}
+	return s.recordPaymentLocked(ctx, in, referenceID, userID, carID, currency)
+}
+
+func (s *PaymentService) recordPaymentLocked(ctx context.Context, in CreatePaymentInput, referenceID, userID, carID, currency string) (*domain.Payment, error) {
 	input := in
 	input.ReferenceID = referenceID
 	input.UserID = userID
@@ -187,6 +211,8 @@ func (s *PaymentService) CreatePayment(ctx context.Context, in CreatePaymentInpu
 	payment := &domain.Payment{
 		ID:          newID(),
 		ReferenceID: referenceID,
+		AccountID:   strings.TrimSpace(input.AccountID),
+		CardNumber:  strings.TrimSpace(input.CardNumber),
 		UserID:      userID,
 		CarID:       carID,
 		Amount:      input.Amount,
@@ -297,14 +323,16 @@ func (s *PaymentService) transferLocked(ctx context.Context, in TransferInput) (
 	}
 
 	tr := &domain.Transfer{
-		ID:            newID(),
-		FromAccountID: from.ID,
-		ToAccountID:   to.ID,
-		Amount:        in.Amount,
-		Fee:           in.Fee,
-		Currency:      in.Currency,
-		Status:        domain.TransferPending,
-		CreatedAt:     now,
+		ID:             newID(),
+		FromAccountID:  from.ID,
+		ToAccountID:    to.ID,
+		FromCardNumber: strings.TrimSpace(in.FromCardNumber),
+		ToCardNumber:   strings.TrimSpace(in.ToCardNumber),
+		Amount:         in.Amount,
+		Fee:            in.Fee,
+		Currency:       in.Currency,
+		Status:         domain.TransferPending,
+		CreatedAt:      now,
 	}
 	if err := s.transfers.CreateTransfer(tr); err != nil {
 		return nil, err

@@ -57,16 +57,18 @@ const (
 )
 
 type Transfer struct {
-	ID            string
-	FromAccountID string
-	ToAccountID   string
-	Amount        Money
-	Fee           Money // комиссия, списывается с отправителя
-	Currency      string
-	Status        TransferStatus
-	CreatedAt     time.Time
-	PostedAt      *time.Time
-	ReversedAt    *time.Time
+	ID             string
+	FromAccountID  string
+	ToAccountID    string
+	FromCardNumber string // для переводов банка: карта отправителя
+	ToCardNumber   string // карта получателя
+	Amount         Money
+	Fee            Money // комиссия, списывается с отправителя
+	Currency       string
+	Status         TransferStatus
+	CreatedAt      time.Time
+	PostedAt       *time.Time
+	ReversedAt     *time.Time
 }
 
 type PaymentStatus string
@@ -80,6 +82,8 @@ const (
 type Payment struct {
 	ID          string
 	ReferenceID string
+	AccountID   string
+	CardNumber  string
 	UserID      string
 	CarID       string
 	Amount      Money

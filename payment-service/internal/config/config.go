@@ -7,9 +7,11 @@ import (
 )
 
 type Config struct {
-	AppEnv   string
-	HTTPAddr string
-	LogLevel string
+	AppEnv      string
+	HTTPAddr    string
+	LogLevel    string
+	Storage     string // postgres | memory
+	DatabaseURL string
 
 	KafkaEnabled            bool
 	KafkaBrokers            string
@@ -21,10 +23,21 @@ type Config struct {
 func Load() Config {
 	loadDotEnv()
 	brokers := strings.TrimSpace(os.Getenv("KAFKA_BROKERS"))
+	dsn := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	storage := strings.ToLower(strings.TrimSpace(getEnv("STORAGE", "")))
+	if storage == "" {
+		if dsn != "" {
+			storage = "postgres"
+		} else {
+			storage = "memory"
+		}
+	}
 	return Config{
 		AppEnv:                  getEnv("APP_ENV", "dev"),
 		HTTPAddr:                getEnv("HTTP_ADDR", ":8081"),
 		LogLevel:                getEnv("LOG_LEVEL", "info"),
+		Storage:                 storage,
+		DatabaseURL:             dsn,
 		KafkaBrokers:            brokers,
 		KafkaTopicBankCommands:  getEnv("KAFKA_TOPIC_BANK_COMMANDS", "morent.bank.commands"),
 		KafkaTopicBankResponses: getEnv("KAFKA_TOPIC_BANK_RESPONSES", "morent.bank.responses"),
