@@ -38,6 +38,23 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) GetByEmailUnscoped(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Unscoped().Where("email = ?", email).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) Restore(user *models.User) error {
+	user.DeletedAt = gorm.DeletedAt{}
+	return r.db.Unscoped().Save(user).Error
+}
+
 func (r *UserRepository) GetByID(id uint) (*models.User, error) {
 	var user models.User
 	err := r.db.First(&user, id).Error
@@ -62,5 +79,6 @@ func (r *UserRepository) Update(user *models.User) error {
 }
 
 func (r *UserRepository) Delete(id uint64) error {
-	return r.db.Delete(&models.User{}, id).Error
+	// Полное удаление: иначе uniqueIndex на email блокирует повторную регистрацию.
+	return r.db.Unscoped().Delete(&models.User{}, id).Error
 }

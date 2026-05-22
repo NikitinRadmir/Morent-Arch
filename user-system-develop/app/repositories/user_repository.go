@@ -13,10 +13,13 @@ type UserRepository interface {
 	FindAll(limit, offset int, companyID uuid.UUID, isActive *bool) ([]models.User, error)
 	FindByID(id uuid.UUID) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
+	FindByEmailUnscoped(email string) (*models.User, error)
 	FindByMorentUserID(morentUserID uint) (*models.User, error)
+	FindByMorentUserIDUnscoped(morentUserID uint) (*models.User, error)
 	FindByEmailAndCompany(email string, companyID uuid.UUID) (*models.User, error)
 	Create(user *models.User) error
 	Update(user *models.User) error
+	UpdateUnscoped(user *models.User) error
 	Delete(id uuid.UUID) error
 	Count(companyID uuid.UUID, isActive *bool) (int64, error)
 	CountRecent(days int, companyID uuid.UUID) (int64, error)
@@ -68,6 +71,30 @@ func (r *userRepository) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (r *userRepository) FindByEmailUnscoped(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Unscoped().Preload("Company").Where("email = ?", email).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) FindByMorentUserIDUnscoped(morentUserID uint) (*models.User, error) {
+	var user models.User
+	err := r.db.Unscoped().Preload("Company").Where("morent_user_id = ?", morentUserID).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *userRepository) FindByMorentUserID(morentUserID uint) (*models.User, error) {
 	var user models.User
 	err := r.db.Preload("Company").Where("morent_user_id = ?", morentUserID).First(&user).Error
@@ -95,6 +122,10 @@ func (r *userRepository) Create(user *models.User) error {
 
 func (r *userRepository) Update(user *models.User) error {
 	return r.db.Save(user).Error
+}
+
+func (r *userRepository) UpdateUnscoped(user *models.User) error {
+	return r.db.Unscoped().Save(user).Error
 }
 
 func (r *userRepository) Delete(id uuid.UUID) error {

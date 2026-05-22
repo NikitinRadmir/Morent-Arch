@@ -104,16 +104,37 @@ func (s *MorentSyncService) handleRegistered(data morentevents.UserRegistered) e
 	}
 
 	email := strings.ToLower(strings.TrimSpace(data.Email))
-	if existing, _ := s.userRepo.FindByMorentUserID(data.MorentUserID); existing != nil {
-		return nil
+	if existing, _ := s.userRepo.FindByMorentUserIDUnscoped(data.MorentUserID); existing != nil {
+		existing.Password = data.PasswordHash
+		existing.IsActive = true
+		existing.DeletedAt = gorm.DeletedAt{}
+		first, last := splitName(data.Name)
+		existing.FirstName = first
+		existing.LastName = last
+		existing.Position = strings.TrimSpace(data.Position)
+		return s.userRepo.UpdateUnscoped(existing)
 	}
-	existing, err := s.userRepo.FindByEmail(email)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+
+	existing, err := s.userRepo.FindByEmailUnscoped(email)
+	if err != nil {
 		return err
 	}
 	if existing != nil {
+		if existing.MorentUserID != nil && *existing.MorentUserID != data.MorentUserID {
+			return fmt.Errorf("email %s is already linked to morent_user_id %d", email, *existing.MorentUserID)
+		}
 		existing.MorentUserID = &data.MorentUserID
-		return s.userRepo.Update(existing)
+		existing.Password = data.PasswordHash
+		existing.IsActive = true
+		existing.DeletedAt = gorm.DeletedAt{}
+		first, last := splitName(data.Name)
+		existing.FirstName = first
+		existing.LastName = last
+		existing.Position = strings.TrimSpace(data.Position)
+		if err := s.userRepo.UpdateUnscoped(existing); err != nil {
+			return err
+		}
+		return s.assignRole(existing.ID, existing.CompanyID, mapMorentRole(data.Role))
 	}
 
 	company, err := s.ensureCompany(firstNonEmpty(data.CompanyName, s.defaultCompany))
@@ -171,12 +192,38 @@ func (s *MorentSyncService) handlePasswordChanged(data morentevents.UserPassword
 }
 
 func (s *MorentSyncService) handleDeactivated(data morentevents.UserDeactivated) error {
-	user, err := s.findUser(data.MorentUserID, data.Email)
+	user, err := s.findUserIncludeDeleted(data.MorentUserID, data.Email)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
 		return err
 	}
+	// Освобождаем email для повторной регистрации в Morent (unique index в user-system).
 	user.IsActive = false
-	return s.userRepo.Update(user)
+	user.Email = fmt.Sprintf("deleted-%s-%s", user.ID.String(), strings.ToLower(strings.TrimSpace(data.Email)))
+	if user.MorentUserID != nil {
+		user.MorentUserID = nil
+	}
+	return s.userRepo.UpdateUnscoped(user)
+}
+
+func (s *MorentSyncService) findUserIncludeDeleted(morentUserID uint, email string) (*models.User, error) {
+	if morentUserID > 0 {
+		user, err := s.userRepo.FindByMorentUserID(morentUserID)
+		if err == nil && user != nil {
+			return user, nil
+		}
+	}
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	if normalized == "" {
+		return nil, gorm.ErrRecordNotFound
+	}
+	user, err := s.userRepo.FindByEmailUnscoped(normalized)
+	if err != nil || user == nil {
+		return nil, fmt.Errorf("user not found for email %s", normalized)
+	}
+	return user, nil
 }
 
 func (s *MorentSyncService) findUser(morentUserID uint, email string) (*models.User, error) {

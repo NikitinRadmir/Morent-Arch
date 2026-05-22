@@ -10,13 +10,20 @@ services:
       HTTP_ADDR: ${HTTP_ADDR:-:8081}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
-      KAFKA_BROKERS: ${KAFKA_BROKERS:-host.docker.internal:9092}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
       KAFKA_TOPIC_BANK_COMMANDS: ${KAFKA_TOPIC_BANK_COMMANDS:-morent.bank.commands}
       KAFKA_TOPIC_BANK_RESPONSES: ${KAFKA_TOPIC_BANK_RESPONSES:-morent.bank.responses}
       KAFKA_GROUP_PAYMENT_BANK: ${KAFKA_GROUP_PAYMENT_BANK:-payment-service-bank}
+    networks:
+      - morent-kafka
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
       interval: 10s
       timeout: 3s
       retries: 3
+
+networks:
+  morent-kafka:
+    external: true
+    name: kafka_morent-kafka

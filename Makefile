@@ -14,6 +14,8 @@ USER_DIR       := $(ROOT_DIR)/user-system-develop
 AGGREGATOR_DIR := $(ROOT_DIR)/car-aggregator-project
 PAYMENT_DIR    := $(ROOT_DIR)/payment-service
 GENERATOR_DIR  := $(ROOT_DIR)/generator-service
+EMAIL_DIR      := $(ROOT_DIR)/EmailService
+EMAILTEST_DIR  := $(ROOT_DIR)/emailtest
 
 # --- Kafka (инфра, общая сеть morent-kafka → kafka_morent-kafka) ---
 
@@ -36,9 +38,9 @@ kafka-build:
 
 # --- Сборка образов (без запуска) ---
 
-.PHONY: build build-morent build-user build-aggregator build-payment build-generator
+.PHONY: build build-morent build-user build-aggregator build-payment build-generator build-email
 
-build: build-morent build-user build-aggregator build-payment build-generator
+build: build-morent build-user build-aggregator build-payment build-generator build-email
 
 build-morent:
 	$(DOCKER) --project-directory $(MORENT_DIR) -f $(MORENT_DIR)/docker-compose.yml build
@@ -55,13 +57,18 @@ build-payment:
 build-generator:
 	$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml build
 
+build-email:
+	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml build
+
 # --- Запуск / остановка отдельных сервисов ---
 
 .PHONY: morent-up morent-down morent-build morent-logs \
 	user-up user-down user-build user-logs \
 	aggregator-up aggregator-down aggregator-build aggregator-logs \
 	payment-up payment-down payment-build payment-logs \
-	generator-up generator-down generator-build generator-logs
+	generator-up generator-down generator-build generator-logs \
+	email-up email-down email-build email-logs \
+	emailtest-up emailtest-down emailtest-logs
 
 morent-up:
 	$(DOCKER) --project-directory $(MORENT_DIR) -f $(MORENT_DIR)/docker-compose.yml up -d --build
@@ -118,19 +125,40 @@ generator-build: build-generator
 generator-logs:
 	$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml logs -f
 
+email-up:
+	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml up -d --build
+
+email-down:
+	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml down
+
+email-build: build-email
+
+email-logs:
+	$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml logs -f
+
+emailtest-up:
+	$(DOCKER) --project-directory $(EMAILTEST_DIR) -f $(EMAILTEST_DIR)/docker-compose.yml up -d --build
+
+emailtest-down:
+	$(DOCKER) --project-directory $(EMAILTEST_DIR) -f $(EMAILTEST_DIR)/docker-compose.yml down
+
+emailtest-logs:
+	$(DOCKER) --project-directory $(EMAILTEST_DIR) -f $(EMAILTEST_DIR)/docker-compose.yml logs -f
+
 # --- Весь стек ---
 
 .PHONY: up down restart ps logs
 
-# Порядок: Kafka → user-system (consumer) → Morent (producer) → остальные
-up: kafka-up user-up morent-up aggregator-up payment-up generator-up
+# Порядок: Kafka → user-system (consumer) → Morent (producer) → email → остальные
+up: kafka-up user-up morent-up email-up aggregator-up payment-up generator-up
 	@echo ""
 	@echo "Стек поднят."
 	@echo "  Kafka UI:     http://localhost:8090"
 	@echo "  Morent UI:    http://localhost:$${FRONTEND_PORT:-5173}"
 	@echo "  Morent API:   http://localhost:$${BACKEND_PORT:-1488}"
+	@echo "  Email API:    http://localhost:$${EMAIL_API_PORT:-8084}"
 
-down: generator-down payment-down aggregator-down morent-down user-down kafka-down
+down: generator-down payment-down aggregator-down email-down morent-down user-down kafka-down
 
 restart: down up
 
@@ -152,6 +180,9 @@ ps:
 	@echo ""
 	@echo "=== generator-service ==="
 	@$(DOCKER) --project-directory $(GENERATOR_DIR) -f $(GENERATOR_DIR)/docker-compose.yml ps
+	@echo ""
+	@echo "=== EmailService ==="
+	@$(DOCKER) --project-directory $(EMAIL_DIR) -f $(EMAIL_DIR)/docker-compose.yml ps
 
 logs:
 	@echo "Логи Kafka (Ctrl+C для выхода)..."
@@ -177,7 +208,7 @@ help:
 	@echo "Отдельные сервисы (примеры):"
 	@echo "  make morent-up      make user-up"
 	@echo "  make aggregator-up  make payment-up"
-	@echo "  make generator-up"
+	@echo "  make generator-up   make email-up   make emailtest-up"
 	@echo ""
 	@echo "Перед первым запуском создайте .env из .env.example в:"
-	@echo "  Morent-project, user-system-develop, car-aggregator-project"
+	@echo "  Morent-project, user-system-develop, car-aggregator-project, EmailService"

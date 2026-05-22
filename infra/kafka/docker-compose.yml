@@ -52,6 +52,21 @@ services:
     networks:
       - morent-kafka
 
+  kafka-init:
+    image: apache/kafka:3.8.1
+    container_name: morent-kafka-init
+    restart: "no"
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+    volumes:
+      - ./init-topics.sh:/init-topics.sh:ro
+    entrypoint: ["/bin/sh", "/init-topics.sh"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - morent-kafka
+
 networks:
   morent-kafka:
     driver: bridge

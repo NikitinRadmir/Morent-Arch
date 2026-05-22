@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"morent-backend/internal/messaging"
 	"morent-backend/internal/models"
 )
@@ -30,6 +31,8 @@ type AuthService struct {
 
 type AuthUserRepository interface {
 	GetByEmail(email string) (*models.User, error)
+	GetByEmailUnscoped(email string) (*models.User, error)
+	Restore(user *models.User) error
 	Create(user *models.User) error
 	GetByID(id uint) (*models.User, error)
 	Update(user *models.User) error
@@ -85,18 +88,37 @@ func (s *AuthService) Register(name, email, password string) (*models.UserRespon
 		return nil, "", err
 	}
 
-	user := models.User{
-		Name:         strings.TrimSpace(name),
-		Email:        normalizedEmail,
-		PasswordHash: string(hash),
-		AvatarURL:    defaultAvatarURL(),
-		Nickname:     strings.TrimSpace(name),
-		Position:     "",
-		Role:         "user",
-	}
-
-	if errCreate := s.userRepo.Create(&user); errCreate != nil {
-		return nil, "", errCreate
+	var user models.User
+	if archived, err := s.userRepo.GetByEmailUnscoped(normalizedEmail); err != nil {
+		return nil, "", err
+	} else if archived != nil {
+		user = *archived
+		user.DeletedAt = gorm.DeletedAt{}
+		user.Name = strings.TrimSpace(name)
+		user.Email = normalizedEmail
+		user.PasswordHash = string(hash)
+		user.Nickname = strings.TrimSpace(name)
+		user.Position = ""
+		user.Role = "user"
+		if user.AvatarURL == "" {
+			user.AvatarURL = defaultAvatarURL()
+		}
+		if errRestore := s.userRepo.Restore(&user); errRestore != nil {
+			return nil, "", errRestore
+		}
+	} else {
+		user = models.User{
+			Name:         strings.TrimSpace(name),
+			Email:        normalizedEmail,
+			PasswordHash: string(hash),
+			AvatarURL:    defaultAvatarURL(),
+			Nickname:     strings.TrimSpace(name),
+			Position:     "",
+			Role:         "user",
+		}
+		if errCreate := s.userRepo.Create(&user); errCreate != nil {
+			return nil, "", errCreate
+		}
 	}
 
 	s.publishRegistered(user)

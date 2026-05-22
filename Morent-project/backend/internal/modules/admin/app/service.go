@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	admindto "morent-backend/internal/modules/admin/httpdto"
+	"morent-backend/internal/messaging"
 	"morent-backend/internal/models"
 	"morent-backend/internal/service"
 )
@@ -40,11 +42,14 @@ type LogReader interface {
 }
 
 type Service struct {
-	userRepo     UserRepository
-	rentalRepo   RentalRepository
-	favoriteRepo FavoriteRepository
-	commentRepo  CommentRepository
-	logReader    LogReader
+	userRepo      UserRepository
+	rentalRepo    RentalRepository
+	favoriteRepo  FavoriteRepository
+	commentRepo   CommentRepository
+	logReader     LogReader
+	events        messaging.UserEventPublisher
+	companyName   string
+	log           *slog.Logger
 }
 
 func NewService(
@@ -53,13 +58,25 @@ func NewService(
 	favoriteRepo FavoriteRepository,
 	commentRepo CommentRepository,
 	logReader LogReader,
+	events messaging.UserEventPublisher,
+	companyName string,
+	log *slog.Logger,
 ) *Service {
+	if events == nil {
+		events = messaging.NoopPublisher{}
+	}
+	if log == nil {
+		log = slog.Default()
+	}
 	return &Service{
 		userRepo:     userRepo,
 		rentalRepo:   rentalRepo,
 		favoriteRepo: favoriteRepo,
 		commentRepo:  commentRepo,
 		logReader:    logReader,
+		events:       events,
+		companyName:  strings.TrimSpace(companyName),
+		log:          log,
 	}
 }
 
@@ -105,7 +122,36 @@ func (s *Service) UpdateUser(req admindto.UpdateUserRequest) error {
 }
 
 func (s *Service) DeleteUser(id uint64) error {
-	return s.userRepo.Delete(id)
+	user, err := s.userRepo.GetByID(uint(id))
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	s.publishDeactivated(*user)
+
+	if err := s.userRepo.Delete(id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) publishDeactivated(user models.User) {
+	if !s.events.Enabled() {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.events.PublishUserDeactivated(ctx, messaging.UserDeactivatedEvent{
+			MorentUserID: user.ID,
+			Email:        user.Email,
+		}); err != nil {
+			s.log.Warn("failed to publish user.deactivated", "user_id", user.ID, "error", err)
+		}
+	}()
 }
 
 func (s *Service) ListRentals() ([]models.Rental, error) {
