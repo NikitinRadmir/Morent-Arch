@@ -22,10 +22,13 @@ func RequestLog(log *slog.Logger) gin.HandlerFunc {
 		latency := time.Since(start)
 		status := c.Writer.Status()
 		attrs := []any{
+			"log_type", "http",
+			"service", "user-system",
 			"method", c.Request.Method,
 			"path", path,
 			"status", status,
 			"latency_ms", latency.Milliseconds(),
+			"duration_ms", latency.Milliseconds(),
 			"client_ip", c.ClientIP(),
 		}
 		if query != "" {

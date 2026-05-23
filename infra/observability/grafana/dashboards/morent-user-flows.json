@@ -1,0 +1,267 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [{"title": "HTTP Analytics", "type": "dashboard", "uid": "morent-http-analytics"}, {"title": "Business Events", "type": "dashboard", "uid": "morent-business-events"}],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 200,
+      "title": "Authentication & profile",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "description": "Регистрация, вход, выход, профиль, смена пароля, верификация email.",
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 1, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 1},
+      "id": 1,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi"}},
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.path.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*auth* OR app.path:*Auth*) AND NOT app.path:\"/health\"",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Auth endpoints activity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 1},
+      "id": 2,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.path:*login* OR app.path:*Login*) AND (app.log_type:http OR app.msg:\"http_request\") AND app.status:200",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Successful logins",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 1}, {"color": "red", "value": 3}]}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 1},
+      "id": 3,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.path:*register* OR app.path:*Register*) AND (app.log_type:http OR app.msg:\"http_request\") AND app.status:[200 TO 299]",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Successful registrations",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+      "id": 201,
+      "title": "Catalog & favorites",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 4,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*cars* OR app.path:*Cars*)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Car catalog views",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+      "id": 5,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.method.keyword", "id": "3", "settings": {"size": "5"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*favorite* OR app.path:*Favorite*)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Favorites (add/list/remove)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "id": 202,
+      "title": "Rental journey",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 25, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+      "id": 6,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.path.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*rental* OR app.path:*Rental*)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Rental API activity by path",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue"}, {"color": "green", "value": 1}]}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 19},
+      "id": 7,
+      "options": {"colorMode": "value", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND app.method:POST AND (app.path:\"/rentals\" OR app.path:\"/Rentals\" OR app.path:\"/rentals/\" OR app.path:\"/Rentals/\") AND app.status:[200 TO 299]",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "New rentals created",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "ms"}},
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 19},
+      "id": 8,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [
+          {"field": "app.duration_ms", "id": "1", "type": "avg"},
+          {"field": "app.duration_ms", "id": "2", "settings": {"percents": ["95"]}, "type": "percentiles"}
+        ],
+        "query": "service.name:morent-backend AND (app.path:*rental* OR app.path:*Rental*) AND (app.log_type:http OR app.msg:\"http_request\")",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Rental API latency (avg / p95)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+      "id": 203,
+      "title": "Payments & bank",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+      "id": 9,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.path.keyword", "id": "3", "settings": {"size": "10"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:payment-service AND (app.log_type:http OR app.msg:\"http_request\") AND app.path:/api/v1/*",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Payment-service API by path",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "id": 10,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:payment-service AND (app.path:*payment* OR app.path:*transfer*) AND (app.log_type:http OR app.msg:\"http_request\")",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Payments & transfers volume",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 36},
+      "id": 204,
+      "title": "Comments, GraphQL, Admin",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 37},
+      "id": 11,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.path:*comment* OR app.path:*Comment*) AND (app.log_type:http OR app.msg:\"http_request\")",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Comments",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 37},
+      "id": 12,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND app.path:\"/graphql\" AND (app.log_type:http OR app.msg:\"http_request\")",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "GraphQL requests",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 37},
+      "id": 13,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:morent-backend AND (app.path:*Admin* OR app.path:*admin*) AND (app.log_type:http OR app.msg:\"http_request\")",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Admin panel API",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 40,
+  "tags": ["morent", "elasticsearch", "user-journey"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "Morent User Flows",
+  "uid": "morent-user-flows",
+  "version": 1
+}

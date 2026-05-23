@@ -1,0 +1,247 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [{"title": "All Services", "type": "dashboard", "uid": "morent-all-services"}],
+  "panels": [
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}, "id": 600, "title": "morent-backend", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 0, "y": 1},
+      "id": 1,
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "options": {"reduceOptions": {"calcs": ["sum"]}, "colorMode": "value"},
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:morent-backend AND app.path:*auth*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Auth API",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 6, "y": 1},
+      "id": 2,
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "options": {"reduceOptions": {"calcs": ["sum"]}},
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:morent-backend AND app.path:*rental*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Rentals API",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 12, "y": 1},
+      "id": 3,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:morent-backend AND app.path:*favorite*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Favorites API",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 18, "y": 1},
+      "id": 4,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:morent-backend AND (app.path:\"/graphql\" OR app.path:*Admin*)", "refId": "A", "timeField": "@timestamp"}],
+      "title": "GraphQL / Admin",
+      "type": "stat"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 8}, "id": 601, "title": "payment-service", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 0, "y": 9},
+      "id": 10,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:payment-service AND app.path:*payments*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Payments",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 6, "y": 9},
+      "id": 11,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:payment-service AND app.path:*transfer*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Transfers",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 12, "y": 9},
+      "id": 12,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:payment-service AND app.path:*accounts*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Accounts",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 18, "y": 9},
+      "id": 13,
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:payment-service AND message:*kafka*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Kafka (bank)",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16}, "id": 602, "title": "user-system", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
+      "id": 20,
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.path.keyword", "id": "3", "settings": {"size": "10"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:user-system AND app.path:*/auth/*",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Auth routes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
+      "id": 21,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "app.path.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:user-system AND (app.path:*/users* OR app.path:*/roles* OR app.path:*/companies*)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Users / roles / companies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 25},
+      "id": 22,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:user-system AND (app.path:\"/query\" OR app.path:\"/graphql\")", "refId": "A", "timeField": "@timestamp"}],
+      "title": "GraphQL",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 25},
+      "id": 23,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:user-system AND app.path:*/api/rpc*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "JSON-RPC",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 25},
+      "id": 24,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:user-system AND message:*kafka*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Kafka sync",
+      "type": "stat"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32}, "id": 603, "title": "car-aggregator", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 33},
+      "id": 30,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:car-aggregator AND app.path:*search*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Search API",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 33},
+      "id": 31,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:car-aggregator AND app.path:*offers*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Offers API",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 33},
+      "id": 32,
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:car-aggregator AND message:*SEARCH_LOG*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Search pipeline events",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 41}, "id": 604, "title": "generator-service", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 0, "y": 42},
+      "id": 40,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:generator-service AND app.path:*password*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Password API",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 6, "x": 6, "y": 42},
+      "id": 41,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:generator-service AND app.path:*qrcode*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "QR code API",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 42},
+      "id": 42,
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "ms"}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"field": "app.duration_ms", "id": "1", "type": "avg"}],
+        "query": "service.name:generator-service AND _exists_:app.duration_ms",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Generator latency",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 49}, "id": 605, "title": "EmailService", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 50},
+      "id": 50,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:emailservice-api AND message:*HTTP*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "API HTTP (Serilog)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 50},
+      "id": 51,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:emailservice-worker", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Worker log volume",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 58},
+      "id": 52,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:emailservice-api AND (message:*webhook* OR message:*ingest*)", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Webhooks / ingestion",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 58},
+      "id": 53,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:emailservice-worker AND message:*Kafka*", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Worker Kafka",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 58},
+      "id": 54,
+      "targets": [{"bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}], "metrics": [{"id": "1", "type": "count"}], "query": "service.name:emailservice-worker AND (message:*SMTP* OR message:*Resend* OR message:*sent* OR message:*retry*)", "refId": "A", "timeField": "@timestamp"}],
+      "title": "Send / retry",
+      "type": "stat"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 40,
+  "tags": ["morent", "api", "domain"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "Morent Domain APIs (all services)",
+  "uid": "morent-domain-apis",
+  "version": 1
+}

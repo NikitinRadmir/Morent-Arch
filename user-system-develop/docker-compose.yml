@@ -46,6 +46,10 @@ services:
     ports:
       - "${APP_PORT:-8082}:8080"
     command: ["./main", "--clear-db=false"]
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/service: "user-system"
+      co.elastic.logs/log_type: "app"
 
 volumes:
   postgres_data:

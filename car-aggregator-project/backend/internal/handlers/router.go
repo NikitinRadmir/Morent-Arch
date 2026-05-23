@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"log/slog"
+	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -8,7 +11,31 @@ func NewRouter(
 	searchHandler *SearchHandler,
 	offerHandler *OfferHandler,
 ) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		c.Next()
+		status := c.Writer.Status()
+		if path == "/health" {
+			return
+		}
+		level := slog.LevelInfo
+		if status >= 500 {
+			level = slog.LevelError
+		} else if status >= 400 {
+			level = slog.LevelWarn
+		}
+		slog.Log(c.Request.Context(), level, "http_request",
+			"log_type", "http",
+			"service", "car-aggregator",
+			"method", c.Request.Method,
+			"path", path,
+			"status", status,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	})
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{

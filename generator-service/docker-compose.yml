@@ -9,3 +9,7 @@ services:
       - PORT=8080
       - CORS_ALLOWED_ORIGINS=*
     restart: unless-stopped
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/service: "generator-service"
+      co.elastic.logs/log_type: "app"

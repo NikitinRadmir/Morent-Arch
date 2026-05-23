@@ -1,0 +1,251 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [
+    {"title": "Service detail", "type": "dashboard", "uid": "morent-service-detail"},
+    {"title": "Overview", "type": "dashboard", "uid": "morent-overview"}
+  ],
+  "panels": [
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}, "id": 500, "title": "Infrastructure", "type": "row"},
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}}},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"elasticsearch\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "Elasticsearch",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+      "id": 2,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"kibana\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "Kibana",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+      "id": 3,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"kafka-ui\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "Kafka UI",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 1},
+      "id": 4,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}},
+      "targets": [{"expr": "probe_duration_seconds{service=~\"elasticsearch|kibana|kafka-ui\"}", "legendFormat": "{{ service }}", "refId": "A"}],
+      "title": "Infra probe latency",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5}, "id": 501, "title": "Application services — health (Prometheus)", "type": "row"},
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 0, "y": 6},
+      "id": 10,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"morent-backend\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "morent-backend",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 3, "y": 6},
+      "id": 11,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"payment-service\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "payment-service",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 6, "y": 6},
+      "id": 12,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"user-system\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "user-system",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 9, "y": 6},
+      "id": 13,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"car-aggregator\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "car-aggregator",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 12, "y": 6},
+      "id": 14,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"generator-service\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "generator-service",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 4, "w": 3, "x": 15, "y": 6},
+      "id": 15,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"emailservice-api\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "emailservice-api",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "description": "Worker без HTTP — смотрим объём логов.",
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "blue"}, {"color": "green", "value": 1}]}, "unit": "short"}},
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 6},
+      "id": 16,
+      "options": {"colorMode": "value", "reduceOptions": {"calcs": ["sum"]}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:emailservice-worker",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "emailservice-worker (log events)",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 10}, "max": 1, "min": 0}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 20,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi"}},
+      "targets": [{"expr": "probe_success{probe_group=\"health\",service!~\"elasticsearch|kibana|kafka-ui\"}", "legendFormat": "{{ service }}", "refId": "A"}],
+      "title": "App health over time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "s"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+      "id": 21,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "targets": [{"expr": "probe_duration_seconds{probe_group=\"health\",service!~\"elasticsearch|kibana|kafka-ui\"}", "legendFormat": "{{ service }}", "refId": "A"}],
+      "title": "App probe duration",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18}, "id": 502, "title": "Log volume & errors (Elasticsearch)", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+      "id": 30,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "service.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:(morent-backend OR payment-service OR user-system OR car-aggregator OR generator-service OR emailservice-api OR emailservice-worker)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Log events by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+      "id": 31,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "service.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:(morent-backend OR payment-service OR user-system OR car-aggregator OR generator-service OR emailservice-api OR emailservice-worker) AND (level:ERROR OR app.level:ERROR OR app.status:[500 TO 599])",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Errors by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 25, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 27},
+      "id": 32,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "service.name.keyword", "id": "3", "settings": {"size": "10"}, "type": "terms"}
+        ],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "(app.log_type:http OR app.msg:\"http_request\" OR app.msg:\"http request\" OR message:*HTTP*) AND service.name:(morent-backend OR payment-service OR user-system OR car-aggregator OR generator-service OR emailservice-api)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "HTTP traffic by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "ms"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 27},
+      "id": 33,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "service.name.keyword", "id": "3", "settings": {"size": "10"}, "type": "terms"}
+        ],
+        "metrics": [{"field": "app.duration_ms", "id": "1", "type": "avg"}, {"field": "app.latency_ms", "id": "2", "type": "avg"}],
+        "query": "(app.log_type:http OR app.msg:\"http_request\" OR app.msg:\"http request\") AND (_exists_:app.duration_ms OR _exists_:app.latency_ms)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Avg HTTP latency by service",
+      "type": "timeseries"
+    },
+    {"collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 35}, "id": 503, "title": "Heartbeat (Elastic Heartbeat)", "type": "row"},
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-heartbeat"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "max": 1, "min": 0}},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 36},
+      "id": 40,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "monitor.name.keyword", "id": "3", "settings": {"size": "15"}, "type": "terms"}
+        ],
+        "metrics": [{"field": "monitor.status", "id": "1", "type": "avg"}],
+        "query": "*",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Heartbeat monitors",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 40,
+  "tags": ["morent", "all-services"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "Morent All Services",
+  "uid": "morent-all-services",
+  "version": 1
+}

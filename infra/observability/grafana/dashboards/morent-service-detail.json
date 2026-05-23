@@ -1,0 +1,197 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [{"title": "All Services", "type": "dashboard", "uid": "morent-all-services"}],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"$service\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "Health probe",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}]}},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "probe_success{service=\"$service\",probe_group=\"ready\"}", "refId": "A"}],
+      "title": "Readiness probe",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "gridPos": {"h": 5, "w": 12, "x": 12, "y": 0},
+      "id": 3,
+      "targets": [
+        {"expr": "probe_duration_seconds{service=\"$service\",probe_group=\"health\"}", "legendFormat": "health", "refId": "A"},
+        {"expr": "probe_duration_seconds{service=\"$service\",probe_group=\"ready\"}", "legendFormat": "ready", "refId": "B"}
+      ],
+      "title": "Probe duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "id": 10,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service AND (app.log_type:http OR app.msg:\"http_request\" OR app.msg:\"http request\" OR message:*HTTP*)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "HTTP request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "ms"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "id": 11,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [
+          {"field": "app.duration_ms", "id": "1", "type": "avg"},
+          {"field": "app.latency_ms", "id": "2", "type": "avg"}
+        ],
+        "query": "service.name:$service AND (_exists_:app.duration_ms OR _exists_:app.latency_ms)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "HTTP latency (avg)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "fillOpacity": 80}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 13},
+      "id": 12,
+      "options": {"orientation": "horizontal"},
+      "targets": [{
+        "bucketAggs": [{"field": "app.status", "id": "2", "settings": {"size": "12"}, "type": "terms"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service AND (app.log_type:http OR app.msg:\"http_request\" OR app.msg:\"http request\") AND _exists_:app.status",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "HTTP status codes",
+      "type": "barchart"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 1}]}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 4, "x": 8, "y": 13},
+      "id": 13,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["sum"]}},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service AND (level:ERROR OR app.level:ERROR OR app.status:[500 TO 599])",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Errors (5xx / ERROR)",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "fillOpacity": 80}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "id": 14,
+      "options": {"orientation": "horizontal"},
+      "targets": [{
+        "bucketAggs": [{"field": "app.path.keyword", "id": "2", "settings": {"size": "15"}, "type": "terms"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service AND (app.log_type:http OR app.msg:\"http_request\" OR app.msg:\"http request\") AND _exists_:app.path",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Top HTTP paths",
+      "type": "barchart"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 15, "stacking": {"mode": "normal"}}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+      "id": 15,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "All log events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+      "id": 16,
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "service.name:$service AND (message:*kafka* OR app.event_type:* OR message:*email* OR message:*SEARCH_LOG* OR app.log_type:integration)",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Integration / async events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 29},
+      "id": 17,
+      "options": {"enableLogDetails": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "settings": {"limit": "400"}, "type": "logs"}],
+        "query": "service.name:$service",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Recent logs — $service",
+      "type": "logs"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 40,
+  "tags": ["morent", "service"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": true, "text": "morent-backend", "value": "morent-backend"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Service",
+        "multi": false,
+        "name": "service",
+        "options": [
+          {"selected": true, "text": "morent-backend", "value": "morent-backend"},
+          {"selected": false, "text": "payment-service", "value": "payment-service"},
+          {"selected": false, "text": "user-system", "value": "user-system"},
+          {"selected": false, "text": "car-aggregator", "value": "car-aggregator"},
+          {"selected": false, "text": "generator-service", "value": "generator-service"},
+          {"selected": false, "text": "emailservice-api", "value": "emailservice-api"},
+          {"selected": false, "text": "emailservice-worker", "value": "emailservice-worker"}
+        ],
+        "query": "morent-backend,payment-service,user-system,car-aggregator,generator-service,emailservice-api,emailservice-worker",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {"from": "now-3h", "to": "now"},
+  "timezone": "browser",
+  "title": "Morent Service Detail",
+  "uid": "morent-service-detail",
+  "version": 1
+}

@@ -7,7 +7,6 @@ heartbeat.monitors:
     check.response.status: [200]
     fields:
       service.name: morent-backend
-      log.type: heartbeat
 
   - type: http
     id: morent-backend-ready
@@ -17,7 +16,6 @@ heartbeat.monitors:
     check.response.status: [200, 503]
     fields:
       service.name: morent-backend
-      log.type: heartbeat
 
   - type: http
     id: payment-service-health
@@ -25,6 +23,8 @@ heartbeat.monitors:
     schedule: "@every 30s"
     hosts: ["http://host.docker.internal:8081/health"]
     check.response.status: [200]
+    fields:
+      service.name: payment-service
 
   - type: http
     id: payment-service-ready
@@ -32,13 +32,8 @@ heartbeat.monitors:
     schedule: "@every 60s"
     hosts: ["http://host.docker.internal:8081/ready"]
     check.response.status: [200, 503]
-
-  - type: http
-    id: emailservice-api-health
-    name: emailservice-api
-    schedule: "@every 30s"
-    hosts: ["http://host.docker.internal:5112/health"]
-    check.response.status: [200]
+    fields:
+      service.name: payment-service
 
   - type: http
     id: car-aggregator-health
@@ -46,13 +41,44 @@ heartbeat.monitors:
     schedule: "@every 30s"
     hosts: ["http://host.docker.internal:8080/health"]
     check.response.status: [200]
+    fields:
+      service.name: car-aggregator
+
+  - type: http
+    id: user-system-health
+    name: user-system
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:8082/health"]
+    check.response.status: [200]
+    fields:
+      service.name: user-system
 
   - type: http
     id: generator-service-health
     name: generator-service
     schedule: "@every 30s"
-    hosts: ["http://host.docker.internal:8080/health"]
+    hosts: ["http://host.docker.internal:8083/health"]
     check.response.status: [200]
+    fields:
+      service.name: generator-service
+
+  - type: http
+    id: emailservice-api-health
+    name: emailservice-api
+    schedule: "@every 30s"
+    hosts: ["http://host.docker.internal:5112/health"]
+    check.response.status: [200]
+    fields:
+      service.name: emailservice-api
+
+  - type: http
+    id: kafka-ui-health
+    name: kafka-ui
+    schedule: "@every 60s"
+    hosts: ["http://host.docker.internal:8090"]
+    check.response.status: [200, 301, 302]
+    fields:
+      service.name: kafka-ui
 
 setup.ilm.enabled: false
 setup.template.name: "morent-heartbeat"

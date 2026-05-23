@@ -1,0 +1,120 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [{"title": "Overview (Prometheus)", "type": "dashboard", "uid": "morent-overview"}],
+  "panels": [
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-heartbeat"},
+      "description": "Данные Heartbeat из индекса morent-heartbeat-*.",
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 15}, "max": 1, "min": 0, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "monitor.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+        ],
+        "metrics": [{"field": "monitor.status", "id": "1", "settings": {"missing": "0"}, "type": "avg"}],
+        "query": "*",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Heartbeat monitor status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-heartbeat"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line"}, "unit": "ms"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [{
+        "bucketAggs": [
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
+          {"field": "monitor.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+        ],
+        "metrics": [{"field": "monitor.duration.us", "id": "1", "type": "avg"}],
+        "query": "*",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Heartbeat response time (µs avg)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-heartbeat"},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "fillOpacity": 80}, "unit": "short"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [{
+        "bucketAggs": [{"field": "monitor.name.keyword", "id": "2", "settings": {"size": "15"}, "type": "terms"}],
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "monitor.status:down OR http.response.status_code:[500 TO 599]",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Failed checks by monitor",
+      "type": "barchart"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"options": {"0": {"color": "red", "text": "DOWN"}}, "type": "value"},
+            {"options": {"1": {"color": "green", "text": "UP"}}, "type": "value"}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "repeat": "service",
+      "repeatDirection": "h",
+      "maxPerRow": 3,
+      "targets": [{"expr": "probe_success{service=\"$service\",probe_group=\"health\"}", "refId": "A"}],
+      "title": "Prometheus probe — $service",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-heartbeat"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "id": 5,
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "sortOrder": "Descending"},
+      "targets": [{
+        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "metrics": [{"id": "1", "settings": {"limit": "200"}, "type": "logs"}],
+        "query": "monitor.status:down OR event.dataset:heartbeat",
+        "refId": "A",
+        "timeField": "@timestamp"
+      }],
+      "title": "Recent Heartbeat events",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 40,
+  "tags": ["morent", "heartbeat", "uptime"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": true, "text": "All", "value": "$__all"},
+        "datasource": {"type": "prometheus", "uid": "Prometheus"},
+        "definition": "label_values(probe_success{probe_group=\"health\"}, service)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "service",
+        "query": {"query": "label_values(probe_success{probe_group=\"health\"}, service)", "refId": "Prometheus-service-Variable-Query"},
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {"from": "now-24h", "to": "now"},
+  "timezone": "browser",
+  "title": "Morent Uptime",
+  "uid": "morent-uptime",
+  "version": 1
+}

@@ -1,9 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"generator-service/internal/handlers"
 	"log"
+	"log/slog"
+	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,18 +14,33 @@ func main() {
 	// Настройка Gin режима
 	gin.SetMode(gin.ReleaseMode)
 	
-	router := gin.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	// Логирование запросов
-	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("[%s] %s %s %d %s\n",
-			param.TimeStamp.Format("2006-01-02 15:04:05"),
-			param.Method,
-			param.Path,
-			param.StatusCode,
-			param.Latency,
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		c.Next()
+		if path == "/health" {
+			return
+		}
+		status := c.Writer.Status()
+		level := slog.LevelInfo
+		if status >= 500 {
+			level = slog.LevelError
+		} else if status >= 400 {
+			level = slog.LevelWarn
+		}
+		slog.Log(c.Request.Context(), level, "http_request",
+			"log_type", "http",
+			"service", "generator-service",
+			"method", c.Request.Method,
+			"path", path,
+			"status", status,
+			"duration_ms", time.Since(start).Milliseconds(),
 		)
-	}))
+	})
 
 	// CORS middleware
 	router.Use(func(c *gin.Context) {
