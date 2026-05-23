@@ -35,7 +35,7 @@ func (h *CommentHandler) authenticate(r *http.Request) (*models.User, error) {
 
 func (h *CommentHandler) GetCarComments(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 
@@ -43,26 +43,26 @@ func (h *CommentHandler) GetCarComments(w http.ResponseWriter, r *http.Request) 
 	parts := strings.Split(path, "/")
 
 	if len(parts) < 3 {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный путь запроса", "invalid_path")
 		return
 	}
 
 	carIDStr := parts[len(parts)-1]
 	carID, errParse := strconv.ParseUint(carIDStr, 10, 32)
 	if errParse != nil {
-		http.Error(w, "Invalid car ID format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный идентификатор автомобиля", "invalid_car_id")
 		return
 	}
 
 	comments, errGet := h.service.GetByCarID(int(carID))
 	if errGet != nil {
-		http.Error(w, "Error fetching comments: "+errGet.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось загрузить комментарии")
 		return
 	}
 
 	jsonData, errEncode := json.Marshal(comments)
 	if errEncode != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось сформировать ответ")
 		return
 	}
 
@@ -72,33 +72,33 @@ func (h *CommentHandler) GetCarComments(w http.ResponseWriter, r *http.Request) 
 
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 
 	user, err := h.authenticate(r)
 	if err != nil || user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 
 	var payload commentsdto.CreateCommentRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&payload); errDecode != nil {
-		http.Error(w, "Invalid request body: "+errDecode.Error(), http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := commentValidator.Struct(payload); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
 	canComment, errCan := h.service.UserCanComment(user.ID, payload.CarID)
 	if errCan != nil {
-		http.Error(w, "Error checking permission: "+errCan.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось проверить право на комментарий")
 		return
 	}
 	if !canComment {
-		http.Error(w, "User has not rented this car", http.StatusForbidden)
+		common.WriteForbidden(w, "Оставить отзыв можно только после аренды этого автомобиля")
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errCreate := h.service.Create(&comment); errCreate != nil {
-		http.Error(w, "Error creating comment: "+errCreate.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось сохранить комментарий")
 		return
 	}
 
@@ -125,27 +125,27 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 
 	user, errAuth := h.authenticate(r)
 	if errAuth != nil || user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 	if len(parts) < 3 {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный путь запроса", "invalid_path")
 		return
 	}
 
 	idStr := parts[len(parts)-1]
 	id, errParse := strconv.ParseUint(idStr, 10, 32)
 	if errParse != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный идентификатор комментария", "invalid_comment_id")
 		return
 	}
 
@@ -155,17 +155,17 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existing == nil {
-		http.Error(w, "Comment not found", http.StatusNotFound)
+		common.WriteNotFound(w, "Комментарий не найден")
 		return
 	}
 	if existing.UserID != user.ID && strings.ToLower(user.Role) != "admin" {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		common.WriteForbidden(w, "Недостаточно прав для изменения комментария")
 		return
 	}
 
 	var payload commentsdto.UpdateCommentBody
 	if errDecode := json.NewDecoder(r.Body).Decode(&payload); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	comment := *existing
@@ -178,7 +178,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	if errUpdate := h.service.Update(&comment); errUpdate != nil {
 		if errors.Is(errUpdate, gorm.ErrRecordNotFound) {
-			http.Error(w, "Comment not found", http.StatusNotFound)
+			common.WriteNotFound(w, "Комментарий не найден")
 			return
 		}
 		common.WriteInternalError(w, "failed to update comment")
@@ -191,27 +191,27 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 
 func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 
 	user, errAuth := h.authenticate(r)
 	if errAuth != nil || user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 	if len(parts) < 3 {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный путь запроса", "invalid_path")
 		return
 	}
 
 	idStr := parts[len(parts)-1]
 	id, errParse := strconv.ParseUint(idStr, 10, 32)
 	if errParse != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный идентификатор комментария", "invalid_comment_id")
 		return
 	}
 
@@ -221,17 +221,17 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existing == nil {
-		http.Error(w, "Comment not found", http.StatusNotFound)
+		common.WriteNotFound(w, "Комментарий не найден")
 		return
 	}
 	if existing.UserID != user.ID && strings.ToLower(user.Role) != "admin" {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		common.WriteForbidden(w, "Недостаточно прав для удаления комментария")
 		return
 	}
 
 	if errDelete := h.service.Delete(uint(id)); errDelete != nil {
 		if errors.Is(errDelete, gorm.ErrRecordNotFound) {
-			http.Error(w, "Comment not found", http.StatusNotFound)
+			common.WriteNotFound(w, "Комментарий не найден")
 			return
 		}
 		common.WriteInternalError(w, "failed to delete comment")

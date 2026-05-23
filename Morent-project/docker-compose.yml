@@ -109,6 +109,7 @@ services:
       KAFKA_TOPIC_BANK_RESPONSES: ${KAFKA_TOPIC_BANK_RESPONSES:-morent.bank.responses}
       KAFKA_GROUP_MORENT_BANK: ${KAFKA_GROUP_MORENT_BANK:-morent-backend-bank}
       MORENT_COMPANY_NAME: ${MORENT_COMPANY_NAME:-Morent}
+      SEED_ADMIN: ${SEED_ADMIN:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

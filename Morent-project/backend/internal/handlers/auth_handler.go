@@ -30,11 +30,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req authdto.RegisterRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
@@ -77,11 +77,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req authdto.LoginRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token := h.extractToken(r)
 	if token == "" {
-		http.Error(w, "missing token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	lower := strings.ToLower(token)
@@ -160,7 +160,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: err.Error(),
 		})
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Сессия истекла. Войдите снова")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "missing token",
 		})
-		http.Error(w, "missing token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	lower := strings.ToLower(token)
@@ -202,7 +202,7 @@ func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "invalid token",
 		})
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Сессия истекла. Войдите снова")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -229,7 +229,7 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "missing token",
 		})
-		http.Error(w, "missing token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	lower := strings.ToLower(token)
@@ -245,13 +245,13 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "invalid token",
 		})
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Сессия истекла. Войдите снова")
 		return
 	}
 
 	var req authdto.ProfileUpdateRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 
@@ -265,7 +265,7 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: errUpdate.Error(),
 		})
-		http.Error(w, errUpdate.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось обновить профиль")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -291,7 +291,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "missing token",
 		})
-		http.Error(w, "missing token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	lower := strings.ToLower(token)
@@ -307,13 +307,13 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: "invalid token",
 		})
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Сессия истекла. Войдите снова")
 		return
 	}
 
 	var req authdto.PasswordChangeRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 
@@ -330,7 +330,11 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(errChange, service.ErrInvalidCredentials) {
 			status = http.StatusUnauthorized
 		}
-		http.Error(w, errChange.Error(), status)
+		if status == http.StatusUnauthorized {
+			common.WriteAPIError(w, common.APIError{Error: "Текущий пароль указан неверно", Code: "invalid_credentials", Status: status})
+			return
+		}
+		common.WriteInternalErrorJSON(w, "Не удалось сменить пароль")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -347,18 +351,18 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req authdto.VerifyEmailRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
 	updated, token, errVerify := h.service.VerifyEmail(req.Email, req.Code)
 	if errVerify != nil {
 		status := http.StatusBadRequest
-		http.Error(w, errVerify.Error(), status)
+		common.WriteAPIError(w, common.APIError{Error: "Неверный или истекший код подтверждения", Code: "invalid_verification_code", Status: status})
 		return
 	}
 
@@ -382,16 +386,16 @@ func (h *AuthHandler) ResendVerificationEmail(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	var req authdto.ResendVerificationRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := authValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
 	if errResend := h.service.ResendVerificationEmail(req.Email); errResend != nil {
-		http.Error(w, errResend.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось отправить код подтверждения")
 		return
 	}
 

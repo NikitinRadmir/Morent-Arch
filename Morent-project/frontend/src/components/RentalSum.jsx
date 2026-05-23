@@ -1,4 +1,5 @@
 import CarImage from './CarImage';
+import { formatUsd } from '../utils/formatMoney';
 
 const RentalSum = ({car, totalAmount}) => {
     return (
@@ -29,7 +30,7 @@ const RentalSum = ({car, totalAmount}) => {
                         <p><highlited-gray>Subtotal</highlited-gray></p>
                     </div>
                     <div className="col-6 t-e p-0">
-                        <p>${totalAmount}.00</p>
+                        <p>{formatUsd(totalAmount)}</p>
                     </div>
                     <div className="col-6 p-0">
                         <p><highlited-gray>Tax</highlited-gray></p>
@@ -47,7 +48,7 @@ const RentalSum = ({car, totalAmount}) => {
                             <p><highlited-gray>Overall price and includes rental discount</highlited-gray></p>
                         </div>
                         <div className="ml-auto">
-                            <h1 className="mb-0 mt-1">${totalAmount}.00</h1>
+                            <h1 className="mb-0 mt-1">{formatUsd(totalAmount)}</h1>
                         </div>
                     </div>
 

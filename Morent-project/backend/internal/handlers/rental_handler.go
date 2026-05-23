@@ -37,7 +37,7 @@ func NewRentalHandler(authService *service.AuthService, rentalService *service.R
 func (h *RentalHandler) List(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authenticate(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	ctx := r.Context()
@@ -52,7 +52,7 @@ func (h *RentalHandler) List(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: errList.Error(),
 		})
-		http.Error(w, "failed to load rentals: "+errList.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось загрузить аренды")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -68,29 +68,29 @@ func (h *RentalHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authenticate(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	ctx := r.Context()
 
 	var req rentalsdto.RentalRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&req); errDecode != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := rentalValidator.Struct(req); err != nil {
-		http.Error(w, "validation error: "+err.Error(), http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 
 	start, errStart := time.Parse("2006-01-02", req.StartDate)
 	if errStart != nil {
-		http.Error(w, "invalid startDate format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Дата начала должна быть в формате YYYY-MM-DD", "invalid_start_date")
 		return
 	}
 	end, errEnd := time.Parse("2006-01-02", req.EndDate)
 	if errEnd != nil {
-		http.Error(w, "invalid endDate format", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Дата окончания должна быть в формате YYYY-MM-DD", "invalid_end_date")
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 			Result:   "error",
 			Message:  errCreate.Error(),
 		})
-		http.Error(w, msg, status)
+		common.WriteAPIError(w, common.APIError{Error: msg, Code: "rental_error", Status: status})
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -128,19 +128,19 @@ func (h *RentalHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *RentalHandler) BookedDates(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 3 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный путь запроса", "invalid_path")
 		return
 	}
 	idStr := parts[len(parts)-1]
 	carID64, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid car id", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный идентификатор автомобиля", "invalid_car_id")
 		return
 	}
 
 	bookings, errList := h.rentalService.ListCarBookings(uint(carID64))
 	if errList != nil {
-		http.Error(w, "failed to load bookings: "+errList.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось загрузить занятые даты")
 		return
 	}
 

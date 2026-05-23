@@ -4,11 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+)
+
+var (
+	ErrGeneratorUnavailable = errors.New("generator service unavailable")
+	ErrGeneratorBadResponse = errors.New("generator service returned bad response")
 )
 
 // GeneratorClient вызывает generator-service по внутренней сети (пароль только в POST body).
@@ -40,7 +46,7 @@ type generatedPasswordResponse struct {
 // GeneratePassword запрашивает новый пароль у generator-service.
 func (c *GeneratorClient) GeneratePassword(ctx context.Context) (password string, err error) {
 	if !c.Enabled() {
-		return "", fmt.Errorf("generator service is not configured")
+		return "", ErrGeneratorUnavailable
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/password", nil)
 	if err != nil {
@@ -48,18 +54,18 @@ func (c *GeneratorClient) GeneratePassword(ctx context.Context) (password string
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrGeneratorUnavailable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("generator returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("%w: status %d", ErrGeneratorBadResponse, resp.StatusCode)
 	}
 	var out generatedPasswordResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrGeneratorBadResponse, err)
 	}
 	if out.Password == "" {
-		return "", fmt.Errorf("empty password from generator")
+		return "", fmt.Errorf("%w: empty password", ErrGeneratorBadResponse)
 	}
 	return out.Password, nil
 }
@@ -79,7 +85,7 @@ type PasswordValidationResult struct {
 // ValidatePassword отправляет пароль на проверку (только POST, без query string).
 func (c *GeneratorClient) ValidatePassword(ctx context.Context, password string) (*PasswordValidationResult, error) {
 	if !c.Enabled() {
-		return nil, fmt.Errorf("generator service is not configured")
+		return nil, ErrGeneratorUnavailable
 	}
 	payload, err := json.Marshal(map[string]string{"password": password})
 	if err != nil {
@@ -92,19 +98,19 @@ func (c *GeneratorClient) ValidatePassword(ctx context.Context, password string)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrGeneratorUnavailable, err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrGeneratorBadResponse, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("generator returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%w: status %d", ErrGeneratorBadResponse, resp.StatusCode)
 	}
 	var result PasswordValidationResult
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrGeneratorBadResponse, err)
 	}
 	return &result, nil
 }

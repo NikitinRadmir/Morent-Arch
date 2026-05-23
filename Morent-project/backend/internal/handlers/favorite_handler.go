@@ -33,7 +33,7 @@ func NewFavoriteHandler(authService *service.AuthService, favoriteService *servi
 func (h *FavoriteHandler) List(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authenticate(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	ctx := r.Context()
@@ -48,7 +48,7 @@ func (h *FavoriteHandler) List(w http.ResponseWriter, r *http.Request) {
 			Result:  "error",
 			Message: errList.Error(),
 		})
-		http.Error(w, "Failed to load favorites: "+errList.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось загрузить избранное")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -64,18 +64,18 @@ func (h *FavoriteHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *FavoriteHandler) Add(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authenticate(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	ctx := r.Context()
 
 	var payload favoritesdto.AddFavoriteRequest
 	if errDecode := json.NewDecoder(r.Body).Decode(&payload); errDecode != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if payload.CarID == 0 {
-		http.Error(w, "carId is required", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Выберите автомобиль", "car_required")
 		return
 	}
 
@@ -93,7 +93,11 @@ func (h *FavoriteHandler) Add(w http.ResponseWriter, r *http.Request) {
 			Result:   "error",
 			Message:  errAdd.Error(),
 		})
-		http.Error(w, errAdd.Error(), status)
+		if status == http.StatusNotFound {
+			common.WriteNotFound(w, "Автомобиль не найден")
+			return
+		}
+		common.WriteInternalErrorJSON(w, "Не удалось добавить автомобиль в избранное")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{
@@ -111,20 +115,20 @@ func (h *FavoriteHandler) Add(w http.ResponseWriter, r *http.Request) {
 func (h *FavoriteHandler) Remove(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authenticate(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	ctx := r.Context()
 
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 2 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный путь запроса", "invalid_path")
 		return
 	}
 	idStr := parts[len(parts)-1]
 	carID64, errParse := strconv.ParseUint(idStr, 10, 64)
 	if errParse != nil {
-		http.Error(w, "invalid car id", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный идентификатор автомобиля", "invalid_car_id")
 		return
 	}
 
@@ -138,7 +142,7 @@ func (h *FavoriteHandler) Remove(w http.ResponseWriter, r *http.Request) {
 			Result:   "error",
 			Message:  errRemove.Error(),
 		})
-		http.Error(w, "failed to remove favorite: "+errRemove.Error(), http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось убрать автомобиль из избранного")
 		return
 	}
 	_ = h.logService.LogEvent(ctx, service.LogEvent{

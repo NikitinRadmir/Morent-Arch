@@ -1,4 +1,5 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 
@@ -8,7 +9,34 @@ const Reviews = ({ reviews, carId, onCommentAdded }) => {
     const [rating, setRating] = useState(5);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [canReview, setCanReview] = useState(false);
+    const [checkingEligibility, setCheckingEligibility] = useState(false);
     const { isAuthenticated, authRequest } = useContext(AuthContext);
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setCanReview(false);
+            return;
+        }
+        let active = true;
+        const checkEligibility = async () => {
+            setCheckingEligibility(true);
+            try {
+                const rentals = await authRequest('/rentals');
+                const eligible = Array.isArray(rentals)
+                    && rentals.some((rental) => Number(rental.car?.id) === Number(carId));
+                if (active) setCanReview(eligible);
+            } catch {
+                if (active) setCanReview(false);
+            } finally {
+                if (active) setCheckingEligibility(false);
+            }
+        };
+        checkEligibility();
+        return () => {
+            active = false;
+        };
+    }, [authRequest, carId, isAuthenticated]);
 
     const handleShowAll = () => {
         setVisibleReviews(reviews.length);
@@ -22,7 +50,7 @@ const Reviews = ({ reviews, carId, onCommentAdded }) => {
                 setSubmitting(true);
                 const created = await authRequest('/comments', {
                 method: 'POST',
-                body: JSON.stringify({ carId, description: newComment, rating }),
+                body: JSON.stringify({ carId: Number(carId), description: newComment.trim(), rating }),
             });
             setNewComment('');
             setRating(5);
@@ -46,7 +74,7 @@ const Reviews = ({ reviews, carId, onCommentAdded }) => {
                     Reviews <span className='background-blue'>{reviews.length}</span>
                 </h4>
 
-                {isAuthenticated && (
+                {isAuthenticated && canReview && (
                     <form className="mb-4" onSubmit={handleSubmit}>
                         <textarea
                             className="form-container-input"
@@ -70,7 +98,7 @@ const Reviews = ({ reviews, carId, onCommentAdded }) => {
                                 ))}
                             </select>
                         </div>
-                        {error && <div className="auth-alert auth-alert--error mt-2">{error}</div>}
+                        {error && <div className="review-feedback review-feedback--error mt-2">{error}</div>}
                         <button
                             type="submit"
                             className="auth-submit mt-2"
@@ -79,6 +107,12 @@ const Reviews = ({ reviews, carId, onCommentAdded }) => {
                             {submitting ? 'Sending...' : 'Add comment'}
                         </button>
                     </form>
+                )}
+                {isAuthenticated && !checkingEligibility && !canReview && (
+                    <div className="review-feedback mb-4">
+                        You can leave a review after renting this exact car. Open your booked car from{' '}
+                        <Link to="/rentals">My rentals</Link>.
+                    </div>
                 )}
 
                 {reviews.slice(0, visibleReviews).map((review) => (

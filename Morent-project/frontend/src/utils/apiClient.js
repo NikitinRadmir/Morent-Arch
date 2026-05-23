@@ -10,6 +10,28 @@ const DEFAULT_MESSAGES = {
     504: 'Превышено время ожидания ответа сервера.',
 };
 
+const RAW_VALIDATION_RE = /validation error|failed on the|validator|Request\./i;
+
+export function normalizeErrorMessage(message, status) {
+    const text = String(message || '').trim();
+    if (!text) return messageForStatus(status) || 'Не удалось выполнить запрос';
+    if (RAW_VALIDATION_RE.test(text)) {
+        return status === 401
+            ? 'Неверный email или пароль'
+            : 'Проверьте корректность заполнения полей';
+    }
+    if (text === 'Invalid request body' || text === 'invalid request body') {
+        return 'Некорректный формат запроса';
+    }
+    if (text === 'missing token' || text === 'unauthorized') {
+        return 'Войдите в аккаунт';
+    }
+    if (text === 'invalid token') {
+        return 'Сессия истекла. Войдите снова';
+    }
+    return text;
+}
+
 export function messageForStatus(status) {
     if (status === 503) return DEFAULT_MESSAGES[503];
     if (status === 502) return DEFAULT_MESSAGES[502];
@@ -23,10 +45,10 @@ export async function parseResponseError(response) {
         const text = await response.text();
         try {
             const data = JSON.parse(text);
-            if (data?.error) return data.error;
-            if (data?.message) return data.message;
+            if (data?.error) return normalizeErrorMessage(data.error, response.status);
+            if (data?.message) return normalizeErrorMessage(data.message, response.status);
         } catch {
-            if (text?.trim()) return text.trim();
+            if (text?.trim()) return normalizeErrorMessage(text.trim(), response.status);
         }
     } catch {
         // ignore
@@ -49,11 +71,11 @@ export async function resilientFetch(url, options = {}) {
 
     if (!response.ok) {
         const fallback = messageForStatus(response.status);
-        const message = fallback || (await parseResponseError(response));
+        const message = fallback || normalizeErrorMessage(await parseResponseError(response), response.status);
         const err = new Error(message);
         err.status = response.status;
         if (response.status === 503) err.code = 'service_unavailable';
-        if (response.status >= 500) err.code = 'server_error';
+        else if (response.status >= 500) err.code = 'server_error';
         throw err;
     }
     return response;
@@ -62,5 +84,14 @@ export async function resilientFetch(url, options = {}) {
 export async function resilientJson(url, options = {}) {
     const response = await resilientFetch(url, options);
     if (response.status === 204) return null;
-    return response.json();
+    const text = await response.text();
+    if (!text.trim()) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        const err = new Error('Сервер вернул некорректный JSON-ответ');
+        err.status = response.status;
+        err.code = 'invalid_json';
+        throw err;
+    }
 }

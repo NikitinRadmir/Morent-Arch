@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import CarImage from "./CarImage";
 import { getCarFallbackImage, normalizeCarImageSrc } from "../utils/carImages";
+import { formatUsd } from "../utils/formatMoney";
 
 const CarInfo = ({ props }) => {
   const fallbackImage = getCarFallbackImage(props.name, props.type);
@@ -113,7 +114,7 @@ const CarInfo = ({ props }) => {
 
             <div className="d-flex justify-content-between align-items-center mt-5">
               <h2 className="fw-bold price">
-                ${props.price}.00 /<span className="highlited-gray">day</span>
+                {formatUsd(props.price)} /<span className="highlited-gray">day</span>
               </h2>
 
               <a href="#">

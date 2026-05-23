@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import NotFound from './NotFound';
 import CarImage from '../components/CarImage';
+import { resilientFetch, resilientJson } from '../utils/apiClient';
 
 const API_BASE = API_BASE_URL;
 const estimateRentalPrice = (msrp) => {
@@ -14,15 +15,10 @@ const uploadImage = async (file) => {
     if (!file) return '';
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_BASE}/Admin/Media/Upload`, {
+    const res = await resilientFetch(`${API_BASE}/Admin/Media/Upload`, {
         method: 'POST',
         body: formData,
-        credentials: 'include',
     });
-    if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Ошибка загрузки');
-    }
     const data = await res.json();
     return data.url;
 };
@@ -120,14 +116,7 @@ const Admin = () => {
         const headers = {
             ...(options.headers || {}),
         };
-        const resp = await fetch(url, { ...options, headers, credentials: 'include' });
-        if (!resp.ok) {
-            const text = await resp.text();
-            throw new Error(text || resp.statusText);
-        }
-        if (resp.status === 204) return null;
-        const txt = await resp.text();
-        return txt ? JSON.parse(txt) : null;
+        return resilientJson(url, { ...options, headers });
     };
 
     const loadTab = async (tab) => {
@@ -224,7 +213,7 @@ const Admin = () => {
                 headers: jsonHeaders,
                 body: JSON.stringify({ trim }),
             });
-            setAggregatorStatus(`Машина "${trim.make} ${trim.model} ${trim.trim}" добавлена в БД`);
+            setAggregatorStatus(`Машина "${trim.make} ${trim.model} ${trim.trim}" доступна в каталоге`);
             await loadTab('cars');
         } catch (e) {
             setAggregatorStatus(e.message || 'Не удалось импортировать машину');

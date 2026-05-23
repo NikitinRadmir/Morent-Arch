@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext, API_BASE_URL } from '../context/AuthContext';
 import { bankApi } from '../api/bankApi';
 import { formatUsd } from '../utils/formatMoney';
+import { resilientJson } from '../utils/apiClient';
 
 const PayForm = ({ car, setTotalAmount }) => {
     const { isAuthenticated, authRequest, user } = useContext(AuthContext);
@@ -189,11 +190,7 @@ const PayForm = ({ car, setTotalAmount }) => {
     useEffect(() => {
         const loadBookings = async () => {
             try {
-                const resp = await fetch(`${API_BASE_URL}/rentals/car/${car.id}`);
-                if (!resp.ok) {
-                    return;
-                }
-                const data = await resp.json();
+                const data = await resilientJson(`${API_BASE_URL}/rentals/car/${car.id}`);
                 setBookings(data || []);
             } catch (e) {
                 console.error('Failed to load bookings', e);

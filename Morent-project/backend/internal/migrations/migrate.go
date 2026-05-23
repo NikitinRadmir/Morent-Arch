@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
-	"morent-backend/internal/models"
 	"gorm.io/gorm"
+	"morent-backend/internal/models"
 )
 
 func RunMigrations(db *gorm.DB) error {
@@ -54,6 +54,26 @@ func RunMigrations(db *gorm.DB) error {
 			return fmt.Errorf("ошибка создания админа: %v", errCreate)
 		}
 		fmt.Println("✅ Стоковый админ создан: admin@morent.com / admin123")
+	} else {
+		updates := map[string]any{}
+		if strings.ToLower(strings.TrimSpace(existingAdmin.Role)) != "admin" {
+			updates["role"] = "admin"
+		}
+		if !existingAdmin.EmailVerified {
+			updates["email_verified"] = true
+		}
+		if strings.TrimSpace(existingAdmin.Nickname) == "" {
+			updates["nickname"] = "Admin"
+		}
+		if strings.TrimSpace(existingAdmin.Position) == "" {
+			updates["position"] = "Administrator"
+		}
+		if len(updates) > 0 {
+			if errUpdate := db.Model(&existingAdmin).Updates(updates).Error; errUpdate != nil {
+				return fmt.Errorf("ошибка обновления стокового админа: %v", errUpdate)
+			}
+			fmt.Println("✅ Стоковый админ обновлен: admin@morent.com / admin123")
+		}
 	}
 
 	fmt.Println("Миграции выполнены успешно")

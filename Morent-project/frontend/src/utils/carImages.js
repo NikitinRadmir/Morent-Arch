@@ -11,6 +11,7 @@ const MODEL_IMAGES = [
     ['fabia', '/images/cars/FabiaRed.png'],
     ['enyaq', '/images/cars/EnyaqGreen.png'],
     ['citigo', '/images/cars/CitigoYellow.png'],
+    ['suv', '/images/cars/KodiaqBlue.png'],
 ];
 
 export const STABLE_UNSPLASH_CAR_IMAGE =
@@ -25,6 +26,7 @@ export const getCarFallbackImage = (...parts) => {
 export const normalizeCarImageSrc = (src, fallback = DEFAULT_CAR_IMAGE, baseUrl = 'http://localhost') => {
     const value = String(src || '').trim();
     if (!value) return fallback;
+    if (value === '/images/cars/test.png') return fallback;
 
     try {
         const url = new URL(value, baseUrl);

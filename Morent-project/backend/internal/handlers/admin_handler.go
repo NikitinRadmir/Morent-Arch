@@ -428,24 +428,24 @@ type ImportAggregatorCarRequest struct {
 
 func (h *AdminHandler) ListAggregatorCars(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
-		http.Error(w, "q is required", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Введите поисковый запрос", "query_required")
 		return
 	}
 
 	body, err := json.Marshal(map[string]string{"q": query})
 	if err != nil {
-		http.Error(w, "failed to prepare request", http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось подготовить запрос к агрегатору")
 		return
 	}
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, h.aggregatorURL+"/search/trims", bytes.NewReader(body))
 	if err != nil {
-		http.Error(w, "failed to prepare aggregator request", http.StatusInternalServerError)
+		common.WriteInternalErrorJSON(w, "Не удалось подготовить запрос к агрегатору")
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -453,24 +453,19 @@ func (h *AdminHandler) ListAggregatorCars(w http.ResponseWriter, r *http.Request
 
 	resp, err := h.doAggregatorRequest(req)
 	if err != nil {
-		http.Error(w, "Сервис агрегатора недоступен", http.StatusServiceUnavailable)
+		common.WriteAPIError(w, common.APIError{Error: "Сервис агрегатора временно недоступен", Code: "aggregator_unavailable", Status: http.StatusServiceUnavailable})
 		return
 	}
 	defer resp.Body.Close()
 
 	respBody, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
-		http.Error(w, "failed to read aggregator response", http.StatusBadGateway)
+		common.WriteAPIError(w, common.APIError{Error: "Агрегатор вернул некорректный ответ", Code: "aggregator_bad_response", Status: http.StatusBadGateway})
 		return
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		w.WriteHeader(http.StatusBadGateway)
-		if len(respBody) == 0 {
-			w.Write([]byte("aggregator request failed"))
-			return
-		}
-		w.Write(respBody)
+		common.WriteAPIError(w, common.APIError{Error: "Агрегатор не смог выполнить поиск", Code: "aggregator_bad_response", Status: http.StatusBadGateway})
 		return
 	}
 
@@ -481,17 +476,17 @@ func (h *AdminHandler) ListAggregatorCars(w http.ResponseWriter, r *http.Request
 
 func (h *AdminHandler) ImportAggregatorCar(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 
 	var req ImportAggregatorCarRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if strings.TrimSpace(req.Trim.Model) == "" {
-		http.Error(w, "model is required", http.StatusBadRequest)
+		common.WriteBadRequest(w, "В ответе агрегатора отсутствует модель автомобиля", "aggregator_model_required")
 		return
 	}
 
@@ -547,6 +542,7 @@ func (h *AdminHandler) ImportAggregatorCar(w http.ResponseWriter, r *http.Reques
 	if req.Trim.Seats > 0 {
 		car.Capacity = req.Trim.Seats
 	}
+
 	if req.Trim.ImageURL != "" {
 		if uploadedURL, err := h.uploadAggregatorImage(r.Context(), req.Trim.ImageURL, req.Trim.Make, req.Trim.Model); err == nil && uploadedURL != "" {
 			car.ImgSrc = uploadedURL
@@ -554,7 +550,7 @@ func (h *AdminHandler) ImportAggregatorCar(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := h.carService.Create(&car); err != nil {
-		common.WriteInternalError(w, "failed to import car")
+		common.WriteInternalErrorJSON(w, "Не удалось импортировать автомобиль")
 		return
 	}
 

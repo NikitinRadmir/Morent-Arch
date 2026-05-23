@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"morent-backend/internal/modules/transport/http/common"
 	"morent-backend/internal/service"
 )
 
@@ -25,17 +26,17 @@ func NewPasswordHandler(generator *service.GeneratorClient, log *slog.Logger) *P
 
 func (h *PasswordHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 	if !h.generator.Enabled() {
-		writeGeneratorUnavailable(w)
+		common.RespondError(w, service.ErrGeneratorUnavailable)
 		return
 	}
 	password, err := h.generator.GeneratePassword(r.Context())
 	if err != nil {
 		h.log.Warn("password generate failed", "error", err)
-		writeGeneratorUnavailable(w)
+		common.RespondError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -49,57 +50,37 @@ type validatePasswordBody struct {
 
 func (h *PasswordHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		common.WriteAPIError(w, common.APIError{Error: "method not allowed", Code: "method_not_allowed", Status: http.StatusMethodNotAllowed})
 		return
 	}
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 512))
 	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteAPIError(w, common.APIError{Error: "invalid request body", Code: "invalid_body", Status: http.StatusBadRequest})
 		return
 	}
 	var body validatePasswordBody
 	if err := json.Unmarshal(raw, &body); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		common.WriteAPIError(w, common.APIError{Error: "invalid JSON", Code: "invalid_json", Status: http.StatusBadRequest})
 		return
 	}
 	if body.Password == "" {
-		http.Error(w, "password is required", http.StatusBadRequest)
+		common.WriteAPIError(w, common.APIError{Error: "password is required", Code: "password_required", Status: http.StatusBadRequest})
 		return
 	}
 
 	if !h.generator.Enabled() {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"unavailable": true,
-			"message":     "generator service unavailable",
-		})
+		common.RespondError(w, service.ErrGeneratorUnavailable)
 		return
 	}
 
 	result, err := h.generator.ValidatePassword(r.Context(), body.Password)
 	if err != nil {
 		h.log.Warn("password validate failed", "error", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"unavailable": true,
-			"message":     "generator service unavailable",
-		})
+		common.RespondError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(result)
-}
-
-func writeGeneratorUnavailable(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"unavailable": true,
-		"error":       "generator service unavailable",
-	})
 }

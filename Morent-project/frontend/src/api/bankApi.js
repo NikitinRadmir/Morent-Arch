@@ -1,29 +1,15 @@
 import { API_BASE_URL } from '../context/AuthContext';
+import { resilientJson } from '../utils/apiClient';
 
 const bankFetch = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  return resilientJson(`${API_BASE_URL}${path}`, {
     method: options.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
-    credentials: 'include',
     body: options.body,
   });
-  const text = await response.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { error: text };
-    }
-  }
-  if (!response.ok) {
-    const message = data?.error || data?.message || text || response.statusText;
-    throw new Error(message);
-  }
-  return data;
 };
 
 export const bankApi = {

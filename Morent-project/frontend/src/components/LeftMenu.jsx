@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 
 const LeftMenu = ({ props, onFilterChange, initialFilters }) => {
-    // Инициализация состояния фильтров из initialFilters
+    const catalogueMaxPrice = Math.max(
+        0,
+        ...props.map((car) => Math.ceil(Number(car.price) || 0)),
+    );
+    const sliderMax = Math.max(catalogueMaxPrice, 1);
+    const displayedMaxPrice = initialFilters.maxPrice === ''
+        ? sliderMax
+        : Number(initialFilters.maxPrice);
+
     const [filters, setFilters] = useState({
         types: initialFilters.types || [],
         capacities: initialFilters.capacities || [],
-        maxPrice: initialFilters.maxPrice || 200,
+        maxPrice: initialFilters.maxPrice || '',
     });
 
-    // Обновление состояния фильтров при изменении initialFilters
     useEffect(() => {
         setFilters({
             types: initialFilters.types || [],
             capacities: initialFilters.capacities || [],
-            maxPrice: initialFilters.maxPrice || 200,
+            maxPrice: initialFilters.maxPrice || '',
         });
     }, [initialFilters]);
 
@@ -50,9 +57,9 @@ const LeftMenu = ({ props, onFilterChange, initialFilters }) => {
     };
 
     const handlePriceChange = (event) => {
-        const newPrice = event.target.value;
+        const newPrice = Number(event.target.value);
         setFilters((prevFilters) => {
-            const newFilters = { ...prevFilters, maxPrice: parseInt(newPrice, 10) };
+            const newFilters = { ...prevFilters, maxPrice: newPrice };
             onFilterChange(newFilters);
             return newFilters;
         });
@@ -93,12 +100,12 @@ const LeftMenu = ({ props, onFilterChange, initialFilters }) => {
                 <input
                     type="range"
                     min="0"
-                    max="200"
-                    value={filters.maxPrice}
+                    max={sliderMax}
+                    value={filters.maxPrice === '' ? displayedMaxPrice : filters.maxPrice}
                     onChange={handlePriceChange}
                     className="price-slider"
                 />
-                <p>Max. ${filters.maxPrice}.00</p>
+                <p>Max. ${filters.maxPrice === '' ? displayedMaxPrice : filters.maxPrice}.00</p>
             </div>
         </div>
     );

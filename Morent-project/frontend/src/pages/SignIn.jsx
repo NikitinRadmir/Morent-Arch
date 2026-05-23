@@ -42,7 +42,10 @@ const SignIn = () => {
                 <p className="auth-subtitle">Welcome back! Please enter your details.</p>
                 {status.message && (
                     <div className={`auth-alert auth-alert--${status.type}`}>
-                        {status.message}
+                        <span className="auth-alert__icon" aria-hidden="true">
+                            {status.type === 'success' ? '✓' : '!'}
+                        </span>
+                        <span>{status.message}</span>
                     </div>
                 )}
                 <form className="auth-form" onSubmit={handleSubmit}>

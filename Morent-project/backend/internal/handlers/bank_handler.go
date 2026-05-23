@@ -29,11 +29,11 @@ var bankValidator = validator.New()
 func (h *BankHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req bankdto.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := bankValidator.Struct(req); err != nil {
-		http.Error(w, "validation error", http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 	profile, token, err := h.bank.Register(req.Phone, req.Password, req.DisplayName)
@@ -48,11 +48,11 @@ func (h *BankHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *BankHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req bankdto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	if err := bankValidator.Struct(req); err != nil {
-		http.Error(w, "validation error", http.StatusBadRequest)
+		common.WriteValidationError(w, err)
 		return
 	}
 	profile, token, err := h.bank.Login(req.Phone, req.Password)
@@ -67,7 +67,7 @@ func (h *BankHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *BankHandler) SyncSession(w http.ResponseWriter, r *http.Request) {
 	user, err := common.Authenticate(h.auth, h.cfg, r)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		common.WriteUnauthorized(w, "Войдите в аккаунт")
 		return
 	}
 	displayName := strings.TrimSpace(user.Nickname)
@@ -104,7 +104,7 @@ func (h *BankHandler) Deposit(w http.ResponseWriter, r *http.Request) {
 	token := common.BankSessionToken(r, h.cfg)
 	var req bankdto.AmountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	profile, err := h.bank.Deposit(token, req.Amount)
@@ -122,7 +122,7 @@ func (h *BankHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	token := common.BankSessionToken(r, h.cfg)
 	var req bankdto.TransferRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		common.WriteBadRequest(w, "Некорректный формат запроса", "invalid_body")
 		return
 	}
 	profile, err := h.bank.Transfer(token, req.RecipientCardNumber, req.Amount)
@@ -189,26 +189,43 @@ func (h *BankHandler) clearBankCookie(w http.ResponseWriter) {
 func (h *BankHandler) writeBankError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrBankUnavailable):
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		common.WriteAPIError(w, common.APIError{Error: "Банковский сервис временно недоступен", Code: "bank_unavailable", Status: http.StatusServiceUnavailable})
 		return
 	case errors.Is(err, service.ErrBankPhoneExists):
-		http.Error(w, err.Error(), http.StatusConflict)
+		common.WriteAPIError(w, common.APIError{Error: "Банковский счет для этого телефона уже существует", Code: "bank_phone_exists", Status: http.StatusConflict})
 		return
 	case errors.Is(err, service.ErrBankInvalidCredentials), errors.Is(err, service.ErrBankSessionInvalid):
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		common.WriteAPIError(w, common.APIError{Error: "Войдите в Morent Bank снова", Code: "bank_session_required", Status: http.StatusUnauthorized})
 		return
 	case errors.Is(err, service.ErrBankInvalidPhone), errors.Is(err, service.ErrBankInvalidCard),
 		errors.Is(err, service.ErrBankInvalidAmount),
 		errors.Is(err, service.ErrBankInsufficientFunds), errors.Is(err, service.ErrBankRecipientNotFound),
 		errors.Is(err, service.ErrBankSameAccount):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		common.WriteBadRequest(w, bankPublicMessage(err), "bank_validation")
 		return
 	default:
 		if strings.Contains(err.Error(), "password must be") {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			common.WriteBadRequest(w, "Пароль банка слишком короткий", "bank_password")
 			return
 		}
-		common.WriteInternalError(w, "bank operation failed")
+		common.WriteInternalErrorJSON(w, "Не удалось выполнить банковскую операцию")
+	}
+}
+
+func bankPublicMessage(err error) string {
+	switch {
+	case errors.Is(err, service.ErrBankInvalidPhone):
+		return "Укажите корректный телефон"
+	case errors.Is(err, service.ErrBankInvalidCard), errors.Is(err, service.ErrBankRecipientNotFound):
+		return "Карта получателя не найдена"
+	case errors.Is(err, service.ErrBankInvalidAmount):
+		return "Укажите корректную сумму"
+	case errors.Is(err, service.ErrBankInsufficientFunds):
+		return "Недостаточно средств на счете"
+	case errors.Is(err, service.ErrBankSameAccount):
+		return "Нельзя перевести деньги на ту же карту"
+	default:
+		return "Проверьте данные банковской операции"
 	}
 }
 

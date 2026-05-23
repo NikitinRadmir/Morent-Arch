@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import CarImage from './CarImage';
+import { formatUsd } from '../utils/formatMoney';
 
 const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }) => {
     const navigate = useNavigate();
@@ -55,7 +56,7 @@ const CarCard = ({ id, name, type, imgSrc, fuel, transmission, capacity, price }
             </div>
             <div className="row mb-3 mt-4 align-items-center car-card__footer">
                 <div className="col-7 p-0">
-                    <p className="price text-start mb-0">${price}.00/<span className="highlited-gray">day</span></p>
+                    <p className="price text-start mb-0">{formatUsd(price)}/<span className="highlited-gray">day</span></p>
                 </div>
                 <div className="col-5 text-end"><Link className='abutton' to={`/cardetail/${id}`}>Rent now</Link></div>
             </div>

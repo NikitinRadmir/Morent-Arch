@@ -37,11 +37,11 @@ func WithAdmin(auth *service.AuthService, cfg *config.Config, next http.HandlerF
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, err := Authenticate(auth, cfg, r)
 		if err != nil || user == nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			WriteUnauthorized(w, "Войдите в аккаунт")
 			return
 		}
 		if strings.ToLower(strings.TrimSpace(user.Role)) != "admin" {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			WriteForbidden(w, "Доступ разрешен только администратору")
 			return
 		}
 		next(w, r)

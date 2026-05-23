@@ -81,7 +81,12 @@ const SignUp = () => {
                 <h2>Создать аккаунт</h2>
                 <p className="auth-subtitle">Регистрация для быстрого управления арендой.</p>
                 {status.message && (
-                    <div className={`auth-alert auth-alert--${status.type}`}>{status.message}</div>
+                    <div className={`auth-alert auth-alert--${status.type}`}>
+                        <span className="auth-alert__icon" aria-hidden="true">
+                            {status.type === 'success' ? '✓' : '!'}
+                        </span>
+                        <span>{status.message}</span>
+                    </div>
                 )}
                 <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
                     <label>
