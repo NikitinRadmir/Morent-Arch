@@ -20,8 +20,8 @@
       "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi"}},
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.path.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+          {"field": "app.path", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
         "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*auth* OR app.path:*Auth*) AND NOT app.path:\"/health\"",
@@ -92,8 +92,8 @@
       "id": 5,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.method.keyword", "id": "3", "settings": {"size": "5"}, "type": "terms"}
+          {"field": "app.method", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "5"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
         "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*favorite* OR app.path:*Favorite*)",
@@ -117,8 +117,8 @@
       "id": 6,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.path.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+          {"field": "app.path", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "8"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
         "query": "service.name:morent-backend AND (app.log_type:http OR app.msg:\"http_request\") AND (app.path:*rental* OR app.path:*Rental*)",
@@ -176,15 +176,15 @@
       "id": 9,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.path.keyword", "id": "3", "settings": {"size": "10"}, "type": "terms"}
+          {"field": "app.topic", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "service.name:payment-service AND (app.log_type:http OR app.msg:\"http_request\") AND app.path:/api/v1/*",
+        "query": "app.topic:\"morent.bank.commands\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Payment-service API by path",
+      "title": "Bank commands published",
       "type": "timeseries"
     },
     {
@@ -195,11 +195,11 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "service.name:payment-service AND (app.path:*payment* OR app.path:*transfer*) AND (app.log_type:http OR app.msg:\"http_request\")",
+        "query": "_exists_:app.topic",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Payments & transfers volume",
+      "title": "Kafka integration event volume",
       "type": "timeseries"
     },
     {
@@ -259,7 +259,7 @@
   "schemaVersion": 40,
   "tags": ["morent", "elasticsearch", "user-journey"],
   "templating": {"list": []},
-  "time": {"from": "now-6h", "to": "now"},
+  "time": {"from": "now-24h", "to": "now"},
   "timezone": "browser",
   "title": "Morent User Flows",
   "uid": "morent-user-flows",

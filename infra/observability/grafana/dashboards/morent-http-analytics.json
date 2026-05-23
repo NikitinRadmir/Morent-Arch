@@ -14,8 +14,8 @@
       "targets": [{
         "alias": "",
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto", "min_doc_count": 0}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"}
+          {"field": "service.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto", "min_doc_count": 0}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
         "query": "app.log_type:http OR app.msg:\"http_request\"",
@@ -33,11 +33,11 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+          {"field": "service.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "8"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"field": "app.duration_ms", "id": "1", "type": "avg"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service",
+        "query": "(app.log_type:http OR app.msg:\"http_request\")",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -51,14 +51,14 @@
       "id": 3,
       "options": {"legend": {"displayMode": "list", "placement": "right", "showLegend": true}, "orientation": "horizontal"},
       "targets": [{
-        "bucketAggs": [{"field": "app.status", "id": "2", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "15"}, "type": "terms"}],
+        "bucketAggs": [{"field": "app.status", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "15"}, "type": "terms"}, {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service",
+        "query": "(app.log_type:http OR app.msg:\"http_request\")",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "HTTP status codes",
-      "type": "barchart"
+      "title": "HTTP status codes over time",
+      "type": "timeseries"
     },
     {
       "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
@@ -67,14 +67,14 @@
       "id": 4,
       "options": {"legend": {"displayMode": "list", "placement": "right", "showLegend": true}, "orientation": "horizontal"},
       "targets": [{
-        "bucketAggs": [{"field": "app.method.keyword", "id": "2", "settings": {"size": "10"}, "type": "terms"}],
+        "bucketAggs": [{"field": "app.method", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"}, {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service",
+        "query": "(app.log_type:http OR app.msg:\"http_request\")",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "HTTP methods",
-      "type": "barchart"
+      "title": "HTTP methods over time",
+      "type": "timeseries"
     },
     {
       "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
@@ -85,7 +85,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service AND (app.status:[500 TO 599] OR level:ERROR)",
+        "query": "(app.log_type:http OR app.msg:\"http_request\") AND app.status:[500 TO 599]",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -100,11 +100,11 @@
       "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi"}},
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.path.keyword", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"}
+          {"field": "app.path", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service AND NOT app.path:\"/health\" AND NOT app.path:\"/ready\"",
+        "query": "(app.log_type:http OR app.msg:\"http_request\") AND NOT app.path:\"/health\" AND NOT app.path:\"/ready\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -120,7 +120,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service AND (app.status:[400 TO 499])",
+        "query": "(app.log_type:http OR app.msg:\"http_request\") AND app.status:[400 TO 499]",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -135,7 +135,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "settings": {"limit": "500"}, "type": "logs"}],
-        "query": "(app.log_type:http OR app.msg:\"http_request\") AND service.name:$service AND (app.status:[500 TO 599] OR level:ERROR)",
+        "query": "(app.log_type:http OR app.msg:\"http_request\") AND app.status:[500 TO 599]",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -151,19 +151,19 @@
       {
         "current": {"selected": true, "text": "All", "value": "$__all"},
         "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
-        "definition": "{\"find\": \"terms\", \"field\": \"service.name.keyword\"}",
+        "definition": "{\"find\": \"terms\", \"field\": \"service.name\"}",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "service",
         "options": [],
-        "query": "{\"find\": \"terms\", \"field\": \"service.name.keyword\"}",
+        "query": "{\"find\": \"terms\", \"field\": \"service.name\"}",
         "refresh": 1,
         "type": "query"
       }
     ]
   },
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {"from": "now-24h", "to": "now"},
   "timezone": "browser",
   "title": "Morent HTTP Analytics",
   "uid": "morent-http-analytics",

@@ -12,15 +12,15 @@
       "id": 1,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "monitor.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+          {"field": "monitor.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
-        "metrics": [{"field": "monitor.status", "id": "1", "settings": {"missing": "0"}, "type": "avg"}],
-        "query": "*",
+        "metrics": [{"id": "1", "type": "count"}],
+        "query": "monitor.status:up",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Heartbeat monitor status",
+      "title": "Successful Heartbeat checks",
       "type": "timeseries"
     },
     {
@@ -30,8 +30,8 @@
       "id": 2,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "monitor.name.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+          {"field": "monitor.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"field": "monitor.duration.us", "id": "1", "type": "avg"}],
         "query": "*",
@@ -47,7 +47,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "id": 3,
       "targets": [{
-        "bucketAggs": [{"field": "monitor.name.keyword", "id": "2", "settings": {"size": "15"}, "type": "terms"}],
+        "bucketAggs": [{"field": "monitor.name", "id": "2", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "15"}, "type": "terms"}],
         "metrics": [{"id": "1", "type": "count"}],
         "query": "monitor.status:down OR http.response.status_code:[500 TO 599]",
         "refId": "A",
@@ -73,7 +73,7 @@
       "repeat": "service",
       "repeatDirection": "h",
       "maxPerRow": 3,
-      "targets": [{"expr": "probe_success{service=\"$service\",probe_group=\"health\"}", "refId": "A"}],
+      "targets": [{"expr": "probe_success{service=\"$service\",probe_group=\"health\",instance!=\"http://morent-kafka-ui:8080\"}", "refId": "A"}],
       "title": "Prometheus probe — $service",
       "type": "stat"
     },
@@ -85,7 +85,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "settings": {"limit": "200"}, "type": "logs"}],
-        "query": "monitor.status:down OR event.dataset:heartbeat",
+        "query": "monitor.status:*",
         "refId": "A",
         "timeField": "@timestamp"
       }],

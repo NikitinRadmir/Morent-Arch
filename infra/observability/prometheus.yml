@@ -57,7 +57,7 @@ scrape_configs:
           probe_group: health
           service: kibana
       - targets:
-          - http://morent-kafka-ui:8080
+          - http://host.docker.internal:8090
         labels:
           probe_group: health
           service: kafka-ui

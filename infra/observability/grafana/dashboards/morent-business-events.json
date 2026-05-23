@@ -18,11 +18,11 @@
       "id": 1,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.event_type.keyword", "id": "3", "settings": {"size": "15"}, "type": "terms"}
+          {"field": "app.event_type", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "15"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*kafka*event*published* OR app.event_type:*",
+        "query": "_exists_:app.event_type",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -31,19 +31,21 @@
     },
     {
       "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
-      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 1}]}, "unit": "short"}},
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "line", "fillOpacity": 20}, "unit": "short"}},
       "gridPos": {"h": 8, "w": 6, "x": 12, "y": 1},
       "id": 2,
-      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}},
       "targets": [{
-        "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
+        "bucketAggs": [
+          {"field": "app.topic", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "6"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
+        ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*kafka*publish*failed* OR message:*kafka*fetch*failed* OR message:*kafka*commit*failed*",
+        "query": "_exists_:app.topic",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Kafka errors",
-      "type": "stat"
+      "title": "Kafka messages by topic",
+      "type": "timeseries"
     },
     {
       "datasource": {"type": "elasticsearch", "uid": "Elasticsearch-logs"},
@@ -52,11 +54,11 @@
       "id": 3,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"size": "6"}, "type": "terms"}
+          {"field": "service.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "6"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*bank*kafka* OR message:*bank*response*",
+        "query": "app.topic:\"morent.bank.commands\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -77,11 +79,11 @@
       "id": 4,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "app.template.keyword", "id": "3", "settings": {"size": "12"}, "type": "terms"}
+          {"field": "app.template", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "12"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*email*event*published* OR app.template:*",
+        "query": "_exists_:app.template",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -96,7 +98,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "service.name:emailservice-* OR message:*email*",
+        "query": "service.name:(emailservice-api OR emailservice-worker)",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -118,7 +120,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*rental*reminder*",
+        "query": "app.template:\"reminder_24h\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -133,11 +135,11 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "app.log_type:integration OR message:integration",
+        "query": "app.topic:\"morent.users\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "External integrations (obslog)",
+      "title": "User synchronization events",
       "type": "timeseries"
     },
     {
@@ -147,15 +149,15 @@
       "id": 8,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+          {"field": "app.template", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "8"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "message:*fallback* OR message:*search_start* OR message:*search_complete*",
+        "query": "app.topic:\"morent.emails\"",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Car aggregator search / fallback",
+      "title": "Email events by template",
       "type": "timeseries"
     },
     {
@@ -172,15 +174,15 @@
       "id": 9,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+          {"field": "service.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "8"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "app.log_type:heartbeat OR message:heartbeat",
+        "query": "service.name:(emailservice-api OR emailservice-worker)",
         "refId": "A",
         "timeField": "@timestamp"
       }],
-      "title": "Application heartbeats by service",
+      "title": "Email services log activity",
       "type": "timeseries"
     },
     {
@@ -190,11 +192,11 @@
       "id": 10,
       "targets": [{
         "bucketAggs": [
-          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"},
-          {"field": "service.name.keyword", "id": "3", "settings": {"size": "8"}, "type": "terms"}
+          {"field": "service.name", "id": "3", "settings": {"min_doc_count": 1, "order": "desc", "orderBy": "_count", "size": "8"}, "type": "terms"},
+          {"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}
         ],
         "metrics": [{"id": "1", "type": "count"}],
-        "query": "level:ERROR OR app.level:ERROR OR message:*panic*",
+        "query": "app.level:ERROR OR message:*panic*",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -209,7 +211,7 @@
       "targets": [{
         "bucketAggs": [{"field": "@timestamp", "id": "2", "settings": {"interval": "auto"}, "type": "date_histogram"}],
         "metrics": [{"id": "1", "settings": {"limit": "300"}, "type": "logs"}],
-        "query": "level:ERROR OR app.level:ERROR OR message:*failed* OR message:*panic*",
+        "query": "app.level:ERROR OR message:*failed* OR message:*panic*",
         "refId": "A",
         "timeField": "@timestamp"
       }],
@@ -221,7 +223,7 @@
   "schemaVersion": 40,
   "tags": ["morent", "elasticsearch", "kafka", "email"],
   "templating": {"list": []},
-  "time": {"from": "now-6h", "to": "now"},
+  "time": {"from": "now-24h", "to": "now"},
   "timezone": "browser",
   "title": "Morent Business Events",
   "uid": "morent-business-events",
